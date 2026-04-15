@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-sub">Sign in to access the Decision Engine</div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}">
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@example.com"
+               value="{{ request.form.get('email', '') }}" required autofocus />
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required />
+      </div>
+
+      <div class="form-row">
+        <label>
+          <input type="checkbox" name="remember" />
+          Remember me
+        </label>
+        <a href="{{ url_for('pages.contact') }}">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn-submit">Sign In</button>
+    </form>
+
+    <div class="auth-footer">
+      Don't have an account?
+      <a href="{{ url_for('auth.register') }}">Create one free →</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

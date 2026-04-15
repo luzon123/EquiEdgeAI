@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Contact{% endblock %}
+
+{% block content %}
+<div class="content-page">
+  <h1>Contact Us</h1>
+  <p class="page-sub">Questions, plan upgrades, or feedback — we'd love to hear from you.</p>
+
+  <h2>Upgrade Your Plan</h2>
+  <p>
+    Payment processing is coming soon. In the meantime, to upgrade your account to Beginner
+    or Pro, send us an email with your username and the plan you want. We'll activate it manually
+    within 24 hours.
+  </p>
+
+  <h2>Get In Touch</h2>
+  <p>For all inquiries — support, billing, feedback, or business — reach out via:</p>
+  <ul>
+    <li>Email: <strong>support@decisionweapon.io</strong></li>
+    <li>Response time: within 24–48 hours on business days</li>
+  </ul>
+
+  <div class="contact-form" style="margin-top:30px;">
+    <p style="font-size:.9rem;color:var(--muted);margin-bottom:20px;">
+      Or fill out this form and we'll respond to your account email.
+    </p>
+
+    <div class="form-group">
+      <label>Subject</label>
+      <input type="text" placeholder="e.g. Plan upgrade request" />
+    </div>
+
+    <div class="form-group">
+      <label>Message</label>
+      <textarea placeholder="Describe your request or question..."></textarea>
+    </div>
+
+    <button class="btn-submit" style="width:auto;padding:11px 28px;">
+      Send Message
+    </button>
+
+    <p style="font-size:.8rem;color:var(--muted);margin-top:14px;">
+      Note: this form is for display purposes. Please email us directly at
+      <strong>support@decisionweapon.io</strong> until the contact backend is set up.
+    </p>
+  </div>
+</div>
+{% endblock %}

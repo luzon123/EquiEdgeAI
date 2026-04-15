@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Pricing{% endblock %}
+
+{% block content %}
+<section class="pricing-section">
+  <div class="section-label">One-Time Purchase</div>
+  <h1 class="section-heading">Pay Once. Access Forever.</h1>
+  <p style="text-align:center;color:var(--muted);max-width:520px;margin:0 auto;font-size:.95rem;">
+    No subscriptions. No renewals. No monthly fees.
+    Choose your tier, pay once, and keep lifetime access.
+  </p>
+
+  <!-- ── Plan Cards ────────────────────────────────────────── -->
+  <div class="pricing-grid" style="margin-top:44px;">
+
+    <!-- Beginner -->
+    <div class="pricing-card">
+      <div class="pricing-plan">Beginner</div>
+      <div class="pricing-price-block">
+        <span class="pricing-price-old">$129.90</span>
+        <span class="pricing-price-current">$99.90</span>
+      </div>
+      <div class="pricing-lifetime-badge">One-time purchase · Lifetime access</div>
+      <div class="pricing-tagline">Core engine access for improving players</div>
+
+      <ul class="pricing-features">
+        <li><span class="check">✔</span> Unlimited decisions</li>
+        <li><span class="check">✔</span> Quick mode (&lt;200ms)</li>
+        <li><span class="check">✔</span> Win rate &amp; EV stats</li>
+        <li><span class="check">✔</span> Board texture analysis</li>
+        <li><span class="check">✔</span> Key metrics (SPR, pot odds, fold equity)</li>
+        <li><span class="cross">✗</span> Hero line</li>
+        <li><span class="cross">✗</span> AI reasoning &amp; decision tags</li>
+        <li><span class="cross">✗</span> Full mode (5,000 sims)</li>
+        <li><span class="cross">✗</span> Opponent exploit profiles</li>
+        <li><span class="cross">✗</span> What-If engine</li>
+        <li><span class="cross">✗</span> Decision metrics dashboard</li>
+      </ul>
+
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('checkout.checkout_page', plan='beginner') }}" class="pricing-cta secondary">
+          Purchase Beginner
+        </a>
+      {% else %}
+        <a href="{{ url_for('auth.register') }}" class="pricing-cta secondary">
+          Get Started →
+        </a>
+      {% endif %}
+    </div>
+
+    <!-- Pro -->
+    <div class="pricing-card featured">
+      <div class="pricing-featured-badge">Best Value</div>
+      <div class="pricing-plan">Pro</div>
+      <div class="pricing-price-block">
+        <span class="pricing-price-old">$199.90</span>
+        <span class="pricing-price-current">$149.90</span>
+      </div>
+      <div class="pricing-lifetime-badge">One-time purchase · Lifetime access</div>
+      <div class="pricing-tagline">Full engine access for serious players</div>
+
+      <ul class="pricing-features">
+        <li><span class="check">✔</span> Unlimited decisions</li>
+        <li><span class="check">✔</span> Quick mode (&lt;200ms)</li>
+        <li><span class="check">✔</span> Win rate &amp; EV stats</li>
+        <li><span class="check">✔</span> Board texture analysis</li>
+        <li><span class="check">✔</span> Key metrics (SPR, pot odds, fold equity)</li>
+        <li><span class="check">✔</span> Hero line</li>
+        <li><span class="check">✔</span> Full AI reasoning (up to 10 bullets)</li>
+        <li><span class="check">✔</span> Decision tags (VALUE, BLUFF, TRAP…)</li>
+        <li><span class="check">✔</span> Full mode (5,000 sims + what-if)</li>
+        <li><span class="check">✔</span> Opponent exploit profiles</li>
+        <li><span class="check">✔</span> What-If engine (3 scenarios)</li>
+        <li><span class="check">✔</span> Decision metrics dashboard</li>
+      </ul>
+
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('checkout.checkout_page', plan='pro') }}" class="pricing-cta primary">
+          Purchase Pro
+        </a>
+      {% else %}
+        <a href="{{ url_for('auth.register') }}" class="pricing-cta primary">
+          Get Started →
+        </a>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- ── Credit Pack ──────────────────────────────────────── -->
+  <div class="credit-pack-card">
+    <div class="credit-pack-left">
+      <div class="credit-pack-icon">⚡</div>
+      <div>
+        <div class="credit-pack-title">Decision Credits</div>
+        <div class="credit-pack-desc">
+          Not ready to commit? Buy a block of decisions and use them any time —
+          no plan required. Credits use Quick Mode with core engine features.
+        </div>
+        <ul class="credit-pack-features">
+          <li>✔ Win rate &amp; EV stats</li>
+          <li>✔ Quick mode decisions</li>
+          <li>✔ Board texture analysis</li>
+          <li>✗ AI coaching, What-If, Exploit profiles</li>
+        </ul>
+      </div>
+    </div>
+    <div class="credit-pack-right">
+      <div class="credit-pack-amount">15 decisions</div>
+      <div class="credit-pack-price">$10</div>
+      <div class="credit-pack-note">$0.67 per decision</div>
+      <a href="{{ url_for('pages.contact') }}" class="pricing-cta primary" style="margin-top:14px;display:block;text-align:center;">
+        Purchase Credits
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Payment note ─────────────────────────────────────── -->
+  <div style="text-align:center;margin-top:28px;font-size:.85rem;color:var(--muted);">
+    💳 Secure payment processing coming soon.
+    <a href="{{ url_for('pages.contact') }}" style="color:var(--accent);text-decoration:none;">
+      Contact us to manually activate your access.
+    </a>
+  </div>
+
+</section>
+
+<!-- Pricing page extra styles -->
+<style>
+.pricing-price-block {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.pricing-price-old {
+  font-size: 1.1rem;
+  color: var(--muted);
+  text-decoration: line-through;
+  font-weight: 400;
+}
+.pricing-price-current {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.pricing-lifetime-badge {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--green);
+  margin-bottom: 10px;
+}
+
+/* Credit pack */
+.credit-pack-card {
+  margin-top: 36px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 30px 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.credit-pack-left  { flex: 1; min-width: 240px; display: flex; gap: 18px; }
+.credit-pack-icon  { font-size: 2rem; flex-shrink: 0; padding-top: 2px; }
+.credit-pack-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; }
+.credit-pack-desc  { font-size: .9rem; color: var(--text-2); line-height: 1.6; margin-bottom: 12px; }
+.credit-pack-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: .85rem;
+  color: var(--text-2);
+}
+.credit-pack-right {
+  min-width: 180px;
+  text-align: center;
+  border-left: 1px solid var(--glass-border);
+  padding-left: 32px;
+}
+.credit-pack-amount { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; color: var(--accent); }
+.credit-pack-price  { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+.credit-pack-note   { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+
+@media (max-width: 640px) {
+  .credit-pack-card   { flex-direction: column; }
+  .credit-pack-right  { border-left: none; border-top: 1px solid var(--glass-border); padding-left: 0; padding-top: 20px; }
+}
+</style>
+{% endblock %}

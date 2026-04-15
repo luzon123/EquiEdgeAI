@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════════ -->
+<section class="hero-section">
+  <div class="hero-badge">♠ AI-Powered Poker Engine v2</div>
+
+  <h1 class="hero-title">
+    Stop Guessing.<br>
+    <span class="gradient-text">Start Deciding.</span>
+  </h1>
+
+  <p class="hero-desc">
+    Real-time Monte Carlo equity, EV comparisons, opponent exploit profiles,
+    and AI coaching — built for serious players who want an edge.
+  </p>
+
+  <div class="hero-cta">
+    {% if logged_in %}
+      <a href="{{ url_for('pages.app_page') }}" class="btn-primary">⚡ Open Engine</a>
+      <a href="{{ url_for('pages.pricing') }}" class="btn-secondary-outline">View Plans</a>
+    {% else %}
+      <a href="{{ url_for('auth.register') }}" class="btn-primary">Get Started Free</a>
+      <a href="{{ url_for('auth.login') }}"    class="btn-secondary-outline">Sign In</a>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     FEATURES
+═══════════════════════════════════════════════════════════ -->
+<section class="features-section">
+  <div class="section-label">What's Inside</div>
+  <h2 class="section-heading">A Complete Decision System</h2>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🎲</div>
+      <div class="feature-title">Monte Carlo Equity</div>
+      <div class="feature-desc">
+        Run up to 10,000 hand simulations per request.
+        Get your real win rate against any number of opponents,
+        calibrated by position and board texture.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">EV Engine</div>
+      <div class="feature-desc">
+        Three-outcome EV model: fold, call, and raise — with
+        full breakdown of fold equity, pot odds, SPR, and
+        range advantage for every street.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <div class="feature-title">Opponent Exploit Profiles</div>
+      <div class="feature-desc">
+        Profile opponents as Tight, Loose, Fish, or Reg.
+        The engine adjusts fold equity, bluff frequency,
+        and value sizing to exploit their tendencies.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">AI Coaching Layer</div>
+      <div class="feature-desc">
+        Multi-bullet reasoning for every decision. Decision tags
+        (VALUE, BLUFF, PROTECTION, TRAP) and confidence metrics
+        help you understand the why, not just the what.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔮</div>
+      <div class="feature-title">What-If Engine</div>
+      <div class="feature-desc">
+        Simulate counterfactual scenarios: what happens if the
+        opponent raises? If the next card is favorable or
+        unfavorable? Plan ahead on every street.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Quick Mode</div>
+      <div class="feature-desc">
+        Need an answer fast? Quick mode delivers a solid
+        decision in under 200ms — ideal for multi-tabling
+        or time-pressured situations.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     HOW IT WORKS
+═══════════════════════════════════════════════════════════ -->
+<section class="steps-section">
+  <div class="section-label">How It Works</div>
+  <h2 class="section-heading">Three Steps to a Better Decision</h2>
+
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-title">Enter the Hand</div>
+      <div class="step-desc">
+        Input your hole cards, the board, stack sizes,
+        pot, and your position — using the visual card picker
+        or text notation.
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-title">Run the Engine</div>
+      <div class="step-desc">
+        The engine runs Monte Carlo simulations, evaluates EV
+        across three actions, and applies opponent exploit
+        adjustments in real time.
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-title">Read the Coaching</div>
+      <div class="step-desc">
+        Get a recommended action with full reasoning, confidence
+        scores, board texture analysis, and what-if
+        scenario planning.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     CTA
+═══════════════════════════════════════════════════════════ -->
+<section class="cta-section">
+  <h2 class="cta-title">Start With 5 Free Credits</h2>
+  <p class="cta-desc">
+    Create a free account and get 5 decisions to try the engine.
+    Upgrade to Beginner or Pro for unlimited access.
+  </p>
+  {% if logged_in %}
+    <a href="{{ url_for('pages.app_page') }}" class="btn-primary">Open the Engine →</a>
+  {% else %}
+    <a href="{{ url_for('auth.register') }}" class="btn-primary">Create Free Account →</a>
+  {% endif %}
+</section>
+
+{% endblock %}

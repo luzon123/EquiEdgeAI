@@ -1,0 +1,6 @@
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: requests in c:\users\magshimim\appdata\roaming\python\python38\site-packages (2.32.3)
+Requirement already satisfied: charset-normalizer<4,>=2 in c:\program files\python38\lib\site-packages (from requests) (3.1.0)
+Requirement already satisfied: idna<4,>=2.5 in c:\program files\python38\lib\site-packages (from requests) (3.4)
+Requirement already satisfied: urllib3<3,>=1.21.1 in c:\program files\python38\lib\site-packages (from requests) (1.26.15)
+Requirement already satisfied: certifi>=2017.4.17 in c:\program files\python38\lib\site-packages (from requests) (2022.12.7)

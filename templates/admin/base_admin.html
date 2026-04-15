@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Admin — {% block admin_title %}Panel{% endblock %}{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-title">Admin Panel</div>
+    <nav class="admin-nav">
+      <a href="{{ url_for('admin.dashboard') }}"
+         class="{% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="{{ url_for('admin.users') }}"
+         class="{% if request.endpoint in ['admin.users', 'admin.user_detail'] %}active{% endif %}">
+        <span class="nav-icon">👥</span> Users
+      </a>
+      <a href="{{ url_for('pages.app_page') }}">
+        <span class="nav-icon">⚡</span> Engine
+      </a>
+      <a href="{{ url_for('pages.home') }}">
+        <span class="nav-icon">🏠</span> Home
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ── Main ────────────────────────────────────────────────── -->
+  <main class="admin-main">
+    {% block admin_content %}{% endblock %}
+  </main>
+
+</div>
+{% endblock %}

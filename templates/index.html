@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Poker Decision Weapon</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">♠</div>
+      <div>
+        <div class="brand-name">Decision Weapon</div>
+        <div class="brand-sub">Poker Engine v2 · AI Coach Mode</div>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      Engine Ready
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN LAYOUT
+═══════════════════════════════════════════════════════════ -->
+<div class="app-layout">
+
+  <!-- ──────────────────────────────────────────────────────
+       LEFT — FORM PANEL
+  ─────────────────────────────────────────────────────── -->
+  <section class="glass-panel form-panel" id="formPanel">
+    <div class="section-header">
+      <div class="section-title">Hand Setup</div>
+      <div class="section-badge">Input</div>
+    </div>
+
+    <!-- Hero Hand -->
+    <div class="field">
+      <label>Hero Hand</label>
+      <div class="input-with-btn">
+        <input id="hand" value="Ah,Kd" readonly
+               onclick="openCardPicker('hand', 2, false)" />
+        <button type="button" class="btn-secondary"
+                onclick="openCardPicker('hand', 2, false)">Pick Cards</button>
+      </div>
+      <div class="help">Click the field or button to open the visual card picker. Exactly 2 cards.</div>
+    </div>
+
+    <!-- Board -->
+    <div class="field">
+      <label>Board</label>
+      <div class="input-with-btn">
+        <input id="board" value="Qs,Jh,2c" readonly
+               onclick="openCardPicker('board', 5, true)" />
+        <button type="button" class="btn-secondary"
+                onclick="openCardPicker('board', 5, true)">Pick Cards</button>
+      </div>
+      <div class="help">Leave empty (pre-flop) or pick 3, 4, or 5 community cards.</div>
+    </div>
+
+    <!-- Players + Position -->
+    <div class="grid-2">
+      <div class="field">
+        <label>Players</label>
+        <input id="players" type="number" value="2" min="2" max="9" />
+      </div>
+      <div class="field">
+        <label>Position</label>
+        <select id="position">
+          <option>UTG</option>
+          <option>MP</option>
+          <option>CO</option>
+          <option selected>BTN</option>
+          <option>SB</option>
+          <option>BB</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Pot + Bet -->
+    <div class="grid-2">
+      <div class="field">
+        <label>Pot</label>
+        <input id="pot" type="number" value="100" min="0" />
+      </div>
+      <div class="field">
+        <label>Bet to Call</label>
+        <input id="bet" type="number" value="20" min="0" />
+      </div>
+    </div>
+
+    <!-- Stack + Simulations -->
+    <div class="grid-2">
+      <div class="field">
+        <label>Hero Stack</label>
+        <input id="stack" type="number" value="500" min="0" />
+      </div>
+      <div class="field" id="simsField">
+        <label>Simulations</label>
+        <input id="simulations" type="number" value="3000" min="1000" max="10000" />
+      </div>
+    </div>
+
+    <!-- Hero Line -->
+    <div class="field">
+      <label>Hero Line</label>
+      <select id="line">
+        <option value="none" selected>None</option>
+        <option value="passive">Passive</option>
+        <option value="aggressive">Aggressive</option>
+        <option value="check_raise">Check-Raise</option>
+      </select>
+      <div class="help">Prior action line — affects bluff credibility and bluff-catch reads.</div>
+    </div>
+
+    <!-- ── Player Profile ─────────────────────────────────── -->
+    <div class="field">
+      <label>Opponent Profile</label>
+      <div class="segment-control segment-4 profile-group">
+        <button class="seg-btn active" data-value="reg">
+          <span class="seg-icon">🎯</span>
+          <span class="seg-label">Reg</span>
+        </button>
+        <button class="seg-btn" data-value="tight">
+          <span class="seg-icon">🔒</span>
+          <span class="seg-label">Tight</span>
+        </button>
+        <button class="seg-btn" data-value="loose">
+          <span class="seg-icon">🌀</span>
+          <span class="seg-label">Loose</span>
+        </button>
+        <button class="seg-btn" data-value="fish">
+          <span class="seg-icon">🐟</span>
+          <span class="seg-label">Fish</span>
+        </button>
+      </div>
+      <div class="help">Adjusts fold equity, bluff frequency, and bet sizing to exploit this opponent type.</div>
+    </div>
+
+    <!-- ── Analysis Mode ──────────────────────────────────── -->
+    <div class="field">
+      <label>Analysis Mode</label>
+      <div class="segment-control segment-2 mode-group">
+        <button class="seg-btn active" data-value="full">
+          <span class="seg-icon">🔬</span>
+          <span class="seg-label">Full (5 000 sims + what-if)</span>
+        </button>
+        <button class="seg-btn mode-quick" data-value="quick">
+          <span class="seg-icon">⚡</span>
+          <span class="seg-label">Quick (&lt;200 ms)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-row">
+      <button id="submitBtn" class="btn-primary" onclick="sendDecision()">
+        Get Decision
+      </button>
+      <button class="btn-secondary" onclick="resetForm()">Reset</button>
+    </div>
+
+    <!-- Notation legend -->
+    <div class="legend">
+      <div class="legend-title">Card Notation Guide</div>
+      <div class="legend-grid">
+        <div class="legend-item"><b>A</b> Ace &nbsp;<b>K</b> King</div>
+        <div class="legend-item"><b>Q</b> Queen &nbsp;<b>J</b> Jack</div>
+        <div class="legend-item"><b>T</b> Ten &nbsp;<b>9–2</b> Number</div>
+        <div class="legend-item"><b>h</b> ♥ &nbsp;<b>d</b> ♦ &nbsp;<b>c</b> ♣ &nbsp;<b>s</b> ♠</div>
+      </div>
+    </div>
+  </section><!-- /form-panel -->
+
+  <!-- ──────────────────────────────────────────────────────
+       RIGHT — RESULTS PANEL
+  ─────────────────────────────────────────────────────── -->
+  <section class="glass-panel results-panel">
+    <div class="section-header">
+      <div class="section-title">Decision Output</div>
+      <div class="section-badge">Live</div>
+    </div>
+
+    <!-- ① Hero Action -->
+    <div class="hero-action">
+      <div>
+        <div class="hero-label">Recommended Action</div>
+        <div class="hero-text" id="heroText">Waiting for input</div>
+      </div>
+      <div class="action-pill pill-idle" id="actionPill">Idle</div>
+    </div>
+
+    <!-- ② Explanation -->
+    <div class="explanation-box" id="explanationBox">
+      Fill in the hand details and click <strong>Get Decision</strong> to see the recommendation, EV comparison, and AI coaching insights.
+    </div>
+
+    <!-- ③ Decision Tags -->
+    <div class="panel-section" id="tagsSection" style="display:none">
+      <div class="panel-section-label">🏷 Decision Tags</div>
+      <div class="tags-row" id="tagsRow"></div>
+    </div>
+
+    <!-- ④ Core Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value" id="statWinRate">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Call EV</div>
+        <div class="stat-value" id="statCallEv">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Raise EV</div>
+        <div class="stat-value" id="statRaiseEv">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Confidence</div>
+        <div class="stat-value" id="statConfidence">—</div>
+      </div>
+    </div>
+
+    <!-- ⑤ AI Reasoning Panel -->
+    <div class="panel-section" id="reasoningSection" style="display:none">
+      <div class="panel-section-label">🧠 AI Reasoning</div>
+      <ul class="reasoning-list" id="reasoningList"></ul>
+    </div>
+
+    <!-- ⑥ Decision Metrics (confidence + aggression + risk) -->
+    <div class="panel-section" id="metricsSection" style="display:none">
+      <div class="panel-section-label">📊 Decision Metrics</div>
+      <div class="metrics-grid">
+
+        <div class="metric-bar-item">
+          <div class="metric-bar-label">
+            <span>Confidence Score</span>
+            <span class="metric-bar-val" id="metricConfidenceVal">—</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill fill-confidence" id="barConfidence" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="metric-bar-item">
+          <div class="metric-bar-label">
+            <span>Aggression Score</span>
+            <span class="metric-bar-val" id="metricAggressionVal">—</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill fill-aggression" id="barAggression" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="metric-inline">
+          <span>Risk Level</span>
+          <span class="risk-badge risk-none" id="riskBadge">—</span>
+        </div>
+
+        <div class="metric-inline">
+          <span>Population Adjustment</span>
+          <span class="pop-factor" id="popAdjVal">—</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ⑦ What-If Engine -->
+    <div class="panel-section" id="whatifSection" style="display:none">
+      <div class="panel-section-label">🔮 What-If Engine</div>
+      <div class="whatif-grid" id="whatifGrid"></div>
+    </div>
+
+    <!-- ⑧ Lower: Key Metrics + Board Context -->
+    <div class="lower-grid">
+      <div class="inner-panel">
+        <div class="inner-panel-title">Key Metrics</div>
+        <div class="metric-list" id="metricsBox">
+          <div class="metric-item"><span>Fold Equity</span><span>—</span></div>
+          <div class="metric-item"><span>SPR</span><span>—</span></div>
+          <div class="metric-item"><span>Hand Class</span><span>—</span></div>
+          <div class="metric-item"><span>Range Advantage</span><span>—</span></div>
+          <div class="metric-item"><span>Pot Odds</span><span>—</span></div>
+        </div>
+      </div>
+
+      <div class="inner-panel">
+        <div class="inner-panel-title">Board &amp; Hand Context</div>
+        <div class="cards-section">
+          <div class="cards-label">Hero Hand</div>
+          <div class="cards-row" id="heroCards"></div>
+        </div>
+        <div class="cards-section">
+          <div class="cards-label">Board</div>
+          <div class="cards-row" id="boardCards"></div>
+        </div>
+        <div class="texture-badges" id="textureBox"></div>
+      </div>
+    </div>
+
+    <!-- ⑨ Raw JSON (collapsible) -->
+    <details class="json-details">
+      <summary>▸ Raw API Response</summary>
+      <pre id="result">Waiting for calculation...</pre>
+    </details>
+
+    <div class="footer-note">
+      For scenario analysis only. Does not replace live reads, bankroll discipline, or real-time table judgment.
+    </div>
+  </section><!-- /results-panel -->
+
+</div><!-- /app-layout -->
+
+<!-- ══════════════════════════════════════════════════════════
+     CARD PICKER OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="cardPickerOverlay" class="picker-overlay" onclick="closeCardPicker(event)">
+  <div class="picker-modal" onclick="event.stopPropagation()">
+    <div class="picker-head">
+      <div>
+        <div class="picker-title" id="pickerTitle">Select Cards</div>
+        <div class="picker-subtitle" id="pickerSubtitle">Choose cards visually from the full deck.</div>
+      </div>
+      <div class="picker-toolbar">
+        <button type="button" class="btn-ghost" onclick="clearPickerSelection()">Clear</button>
+        <button type="button" class="btn-ghost" onclick="applyCardSelection()">Apply</button>
+        <button type="button" class="btn-ghost" onclick="forceCloseCardPicker()">✕ Close</button>
+      </div>
+    </div>
+    <div class="picker-preview" id="pickerPreview">
+      <div class="picker-empty">No cards selected yet.</div>
+    </div>
+    <div class="picker-grid" id="pickerGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOADING OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none">
+  <div class="spinner"></div>
+  <div class="spinner-text">Running Analysis</div>
+  <div class="spinner-sub">Monte Carlo · EV · Coach Layer</div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

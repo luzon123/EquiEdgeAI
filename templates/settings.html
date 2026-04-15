@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+<style>
+/* ── Settings layout ─────────────────────────────────────────── */
+.settings-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 36px 24px 64px;
+}
+.settings-page-header {
+  margin-bottom: 32px;
+}
+.settings-page-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.settings-page-sub {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ── Settings section card ───────────────────────────────────── */
+.settings-card {
+  background: rgba(12, 24, 42, 0.88);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-bottom: 18px;
+}
+.settings-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.settings-card-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.settings-card-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 18px 0;
+}
+
+/* ── Theme option grid ───────────────────────────────────────── */
+.theme-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.theme-option {
+  border: 2px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px 14px 14px;
+  cursor: pointer;
+  transition: border-color .18s, background .18s;
+  background: rgba(6, 14, 28, 0.60);
+  text-align: center;
+  user-select: none;
+}
+.theme-option:hover {
+  border-color: var(--glass-border-h);
+  background: rgba(50, 179, 255, 0.04);
+}
+.theme-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.theme-swatch {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+/* Mini card previews inside settings */
+.mini-card {
+  width: 30px;
+  height: 42px;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  background: #ffffff;
+  color: #c0392b;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 6px rgba(0,0,0,.20);
+}
+.mini-card.black-suit { color: #1a2a44; }
+.mini-card-bot { transform: rotate(180deg); }
+
+/* Theme 2 swatch: colored backgrounds */
+.mini-card.t2-hearts  { background: linear-gradient(145deg, #b91c1c, #ef4444); color: #fff; border: none; }
+.mini-card.t2-spades  { background: linear-gradient(145deg, #111827, #374151); color: #fff; border: none; }
+.mini-card.t2-clubs   { background: linear-gradient(145deg, #166534, #16a34a); color: #fff; border: none; }
+
+/* Theme 3 swatch: glass */
+.mini-card.t3 {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.30);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.20);
+  color: #ff8e9e;
+}
+.mini-card.t3.black-suit { color: #a0c4e8; }
+
+.theme-option-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.theme-option-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.theme-option.selected .theme-option-name { color: var(--accent); }
+
+/* ── Lang option row ─────────────────────────────────────────── */
+.lang-option-row {
+  display: flex;
+  gap: 10px;
+}
+.lang-option {
+  border: 2px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 14px 24px;
+  cursor: pointer;
+  transition: border-color .18s, background .18s;
+  background: rgba(6, 14, 28, 0.60);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-2);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lang-option:hover { border-color: var(--glass-border-h); background: rgba(50,179,255,.04); }
+.lang-option.selected { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.lang-flag { font-size: 20px; }
+.lang-label-row { display: flex; flex-direction: column; gap: 2px; }
+.lang-name { font-size: 14px; font-weight: 800; }
+.lang-note { font-size: 11px; color: var(--muted); font-weight: 400; }
+.lang-option.selected .lang-note { color: var(--accent); opacity: .75; }
+
+/* ── Select row (for position default etc) ───────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+.settings-row-label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.settings-row-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.settings-row-label-wrap { flex: 1; }
+.settings-row select {
+  background: rgba(6,14,28,.80);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 9px 36px 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 140px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236a8aaa'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  outline: none;
+}
+.settings-row select:focus { border-color: var(--accent); }
+
+/* ── Toggle switch ───────────────────────────────────────────── */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(50,130,220,.18);
+  border: 1px solid var(--glass-border);
+  transition: background .18s, border-color .18s;
+}
+.toggle-switch input:checked + .toggle-track {
+  background: var(--accent-dim);
+  border-color: rgba(50,179,255,.45);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform .18s, background .18s;
+}
+.toggle-switch input:checked ~ .toggle-thumb {
+  transform: translateX(20px);
+  background: var(--accent);
+}
+
+/* ── Saved indicator ─────────────────────────────────────────── */
+.save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+  opacity: 0;
+  transition: opacity .20s;
+  margin-left: 10px;
+}
+.save-indicator.visible { opacity: 1; }
+
+@media (max-width: 640px) {
+  .theme-option-grid { grid-template-columns: 1fr 1fr; }
+  .settings-wrap { padding: 20px 16px 48px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-wrap">
+
+  <div class="settings-page-header">
+    <div class="settings-page-title">Settings</div>
+    <div class="settings-page-sub">
+      Personalize your Decision Weapon experience.
+      Settings are saved automatically to this browser.
+    </div>
+  </div>
+
+  <!-- ── Card Style ──────────────────────────────────────────── -->
+  <div class="settings-card">
+    <div class="settings-card-title">Card Style</div>
+    <div class="settings-card-desc">
+      Choose how playing cards look throughout the engine. The change applies immediately when you open the engine.
+    </div>
+
+    <div class="theme-option-grid" id="themeGrid">
+
+      <!-- Theme 1: Classic -->
+      <div class="theme-option" data-theme="1" onclick="selectTheme(1)">
+        <div class="theme-swatch">
+          <div class="mini-card">
+            <span>A♥</span><span class="mini-card-bot">A♥</span>
+          </div>
+          <div class="mini-card black-suit">
+            <span>K♠</span><span class="mini-card-bot">K♠</span>
+          </div>
+        </div>
+        <div class="theme-option-name">Classic</div>
+        <div class="theme-option-desc">White cards, traditional mirrored style</div>
+      </div>
+
+      <!-- Theme 2: Colors -->
+      <div class="theme-option" data-theme="2" onclick="selectTheme(2)">
+        <div class="theme-swatch">
+          <div class="mini-card t2-hearts">
+            <span>A♥</span><span class="mini-card-bot">A♥</span>
+          </div>
+          <div class="mini-card t2-spades">
+            <span>K♠</span><span class="mini-card-bot">K♠</span>
+          </div>
+          <div class="mini-card t2-clubs">
+            <span>Q♣</span><span class="mini-card-bot">Q♣</span>
+          </div>
+        </div>
+        <div class="theme-option-name">Colors</div>
+        <div class="theme-option-desc">Suit-colored backgrounds per card</div>
+      </div>
+
+      <!-- Theme 3: Glass -->
+      <div class="theme-option" data-theme="3" onclick="selectTheme(3)">
+        <div class="theme-swatch">
+          <div class="mini-card t3">
+            <span>A♥</span><span class="mini-card-bot">A♥</span>
+          </div>
+          <div class="mini-card t3 black-suit">
+            <span>K♠</span><span class="mini-card-bot">K♠</span>
+          </div>
+        </div>
+        <div class="theme-option-name">Glass</div>
+        <div class="theme-option-desc">Translucent glassmorphism style</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Language ───────────────────────────────────────────── -->
+  <div class="settings-card">
+    <div class="settings-card-title">Language</div>
+    <div class="settings-card-desc">
+      Sets the interface language. Poker terminology (e.g., Flop, BTN, EV) stays in English regardless of setting.
+    </div>
+
+    <div class="lang-option-row" id="langGrid">
+      <div class="lang-option" data-lang="en" onclick="selectLang('en')">
+        <span class="lang-flag">🇺🇸</span>
+        <div class="lang-label-row">
+          <span class="lang-name">English</span>
+          <span class="lang-note">Default interface language</span>
+        </div>
+      </div>
+      <div class="lang-option" data-lang="he" onclick="selectLang('he')">
+        <span class="lang-flag">🇮🇱</span>
+        <div class="lang-label-row">
+          <span class="lang-name">Hebrew · עברית</span>
+          <span class="lang-note">RTL layout, labels in Hebrew</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Gameplay Defaults ───────────────────────────────────── -->
+  <div class="settings-card">
+    <div class="settings-card-title">Gameplay Defaults</div>
+    <div class="settings-card-desc">
+      Starting values applied when you open or reset the engine.
+    </div>
+
+    <!-- Default position -->
+    <div class="settings-row">
+      <div class="settings-row-label-wrap">
+        <div class="settings-row-label">Default Position</div>
+        <div class="settings-row-desc">The seat position pre-selected when you reset the form.</div>
+      </div>
+      <select id="defaultPosition" onchange="saveSetting('dw-default-position', this.value)">
+        <option value="UTG">UTG</option>
+        <option value="MP">MP</option>
+        <option value="CO">CO</option>
+        <option value="BTN">BTN</option>
+        <option value="SB">SB</option>
+        <option value="BB">BB</option>
+      </select>
+    </div>
+
+    <div class="settings-card-divider"></div>
+
+    <!-- Default analysis mode -->
+    <div class="settings-row">
+      <div class="settings-row-label-wrap">
+        <div class="settings-row-label">Default Analysis Mode</div>
+        <div class="settings-row-desc">Which mode the engine opens in (Pro plan required for Fast Decision).</div>
+      </div>
+      <select id="defaultMode" onchange="saveSetting('dw-default-mode', this.value)">
+        <option value="full">Full Analysis</option>
+        <option value="fast">Fast Decision</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Interface ──────────────────────────────────────────── -->
+  <div class="settings-card">
+    <div class="settings-card-title">Interface</div>
+    <div class="settings-card-desc">
+      Visual preferences for the engine screen.
+    </div>
+
+    <!-- Show card notation legend -->
+    <div class="settings-row">
+      <div class="settings-row-label-wrap">
+        <div class="settings-row-label">Show Card Notation Guide</div>
+        <div class="settings-row-desc">
+          Display the card notation reference (A=Ace, K=King, h=Hearts…) at the bottom of the form panel.
+        </div>
+      </div>
+      <label class="toggle-switch" title="Toggle card notation guide">
+        <input type="checkbox" id="toggleLegend" onchange="saveBoolSetting('dw-show-legend', this.checked)" />
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="settings-card-divider"></div>
+
+    <!-- Auto-close hand picker -->
+    <div class="settings-row">
+      <div class="settings-row-label-wrap">
+        <div class="settings-row-label">Auto-close Hand Picker</div>
+        <div class="settings-row-desc">
+          Automatically close the Hero Hand card picker after selecting the 2nd card.
+        </div>
+      </div>
+      <label class="toggle-switch" title="Toggle auto-close">
+        <input type="checkbox" id="toggleAutoClose" onchange="saveBoolSetting('dw-autoclose-hand', this.checked)" />
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
+</div><!-- /settings-wrap -->
+
+<script>
+/* ── Settings page logic ──────────────────────────────────────── */
+
+function saveSetting(key, value) {
+  localStorage.setItem(key, value);
+  flashSaved();
+}
+
+function saveBoolSetting(key, value) {
+  localStorage.setItem(key, value ? 'true' : 'false');
+  flashSaved();
+}
+
+let _savedTimer = null;
+function flashSaved() {
+  // Could add a brief toast; for now just a silent save
+}
+
+function selectTheme(n) {
+  localStorage.setItem('dw-card-theme', String(n));
+  document.querySelectorAll('#themeGrid .theme-option').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.dataset.theme) === n);
+  });
+}
+
+function selectLang(lang) {
+  localStorage.setItem('dw-lang', lang);
+  document.querySelectorAll('#langGrid .lang-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.lang === lang);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Restore theme
+  const theme = parseInt(localStorage.getItem('dw-card-theme') || '1', 10);
+  selectTheme(theme);
+
+  // Restore language
+  const lang = localStorage.getItem('dw-lang') || 'en';
+  selectLang(lang);
+
+  // Restore default position
+  const pos = localStorage.getItem('dw-default-position') || 'BTN';
+  const posEl = document.getElementById('defaultPosition');
+  if (posEl) posEl.value = pos;
+
+  // Restore default mode
+  const mode = localStorage.getItem('dw-default-mode') || 'full';
+  const modeEl = document.getElementById('defaultMode');
+  if (modeEl) modeEl.value = mode;
+
+  // Restore show-legend toggle
+  const showLegend = localStorage.getItem('dw-show-legend') !== 'false';
+  const legendEl = document.getElementById('toggleLegend');
+  if (legendEl) legendEl.checked = showLegend;
+
+  // Restore auto-close toggle
+  const autoClose = localStorage.getItem('dw-autoclose-hand') !== 'false';
+  const autoCloseEl = document.getElementById('toggleAutoClose');
+  if (autoCloseEl) autoCloseEl.checked = autoClose;
+});
+</script>
+{% endblock content %}

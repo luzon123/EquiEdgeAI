@@ -1,0 +1,89 @@
+{% extends "admin/base_admin.html" %}
+{% block admin_title %}Dashboard{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page-title">Dashboard</div>
+<div class="admin-page-sub">Platform overview and key metrics</div>
+
+<!-- Stats grid -->
+<div class="admin-stats-grid">
+  <div class="admin-stat-card">
+    <div class="admin-stat-label">Total Users</div>
+    <div class="admin-stat-value blue">{{ total_users }}</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-label">Active Accounts</div>
+    <div class="admin-stat-value green">{{ active_users }}</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-label">Pro Purchases</div>
+    <div class="admin-stat-value blue">{{ pro_users }}</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-label">Beginner Purchases</div>
+    <div class="admin-stat-value yellow">{{ beginner_users }}</div>
+  </div>
+  <div class="admin-stat-card">
+    <div class="admin-stat-label">Total Decisions</div>
+    <div class="admin-stat-value orange">{{ total_decisions }}</div>
+  </div>
+</div>
+
+<!-- Recent sign-ups -->
+<div class="admin-table-wrap">
+  <div class="admin-table-head">
+    <h3>Recent Sign-ups</h3>
+    <a href="{{ url_for('admin.users') }}" style="font-size:.85rem;color:var(--accent);text-decoration:none;">
+      View All →
+    </a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Plan</th>
+        <th>Credits</th>
+        <th>Decisions</th>
+        <th>Joined</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in recent_users %}
+      <tr>
+        <td>
+          <b>{{ user.username }}</b>
+          {% if user.is_admin %}<span class="table-badge badge-admin" style="margin-left:6px;">Admin</span>{% endif %}
+        </td>
+        <td style="color:var(--muted);">{{ user.email }}</td>
+        <td>
+          {% if user.plan == 'pro' and user.plan_active %}
+            <span class="table-badge badge-pro">Pro</span>
+          {% elif user.plan == 'beginner' and user.plan_active %}
+            <span class="table-badge badge-beginner">Beginner</span>
+          {% else %}
+            <span class="table-badge badge-none">Free</span>
+          {% endif %}
+        </td>
+        <td>{{ user.credits }}</td>
+        <td>{{ user.total_decisions }}</td>
+        <td style="color:var(--muted);font-size:.82rem;">
+          {{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}
+        </td>
+        <td>
+          <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+             class="table-action-link">Edit</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">
+          No users yet.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

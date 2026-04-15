@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "C:\\Program Files\\Python38\\lib\\site-packages\\treys"
+    ]
+  }
+}

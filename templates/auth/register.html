@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+
+    <div class="auth-title">Create your account</div>
+    <div class="auth-sub">Get 5 free credits to try the engine — no payment required</div>
+
+    <form method="POST" action="{{ url_for('auth.register') }}">
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="pokerplayer99"
+               value="{{ username | default('') }}"
+               minlength="3" maxlength="32" required autofocus />
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@example.com"
+               value="{{ email | default('') }}" required />
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Min 8 characters" minlength="8" required />
+      </div>
+
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" name="confirm" placeholder="Repeat password" required />
+      </div>
+
+      <button type="submit" class="btn-submit">Create Account</button>
+
+      <p style="font-size:.8rem;color:var(--muted);margin-top:14px;text-align:center;line-height:1.5;">
+        By registering you agree to our
+        <a href="{{ url_for('pages.terms') }}" style="color:var(--accent);">Terms</a>
+        and
+        <a href="{{ url_for('pages.privacy') }}" style="color:var(--accent);">Privacy Policy</a>.
+      </p>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account?
+      <a href="{{ url_for('auth.login') }}">Sign in →</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

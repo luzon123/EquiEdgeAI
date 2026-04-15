@@ -1,0 +1,843 @@
+{% extends "base.html" %}
+{% block title %}Engine{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+<style>
+/* ── Mode toggle bar ──────────────────────────────────────── */
+.mode-toggle-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: rgba(6, 14, 28, 0.70);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 5px;
+  margin-bottom: 18px;
+}
+.mode-toggle-btn {
+  border: none;
+  border-radius: 11px;
+  padding: 11px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--muted);
+  transition: background .18s, color .18s, box-shadow .18s;
+  letter-spacing: 0.02em;
+  font-family: inherit;
+}
+.mode-toggle-btn:hover:not(.active) {
+  background: rgba(255,255,255,.05);
+  color: var(--text-2);
+}
+.mode-toggle-btn.active.fast-btn {
+  background: linear-gradient(135deg, rgba(34,138,80,.65), rgba(20,100,55,.65));
+  color: var(--green);
+  box-shadow: 0 0 12px rgba(34,208,122,.18), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.mode-toggle-btn.active.full-btn {
+  background: linear-gradient(135deg, rgba(30,90,170,.70), rgba(18,60,130,.70));
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(50,179,255,.18), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* ── Facing action grid ───────────────────────────────────── */
+.facing-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.facing-btn {
+  border: 1px solid var(--glass-border);
+  border-radius: 11px;
+  padding: 9px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(6, 14, 28, 0.60);
+  color: var(--muted);
+  transition: background .18s, color .18s, border-color .18s;
+  font-family: inherit;
+  text-align: center;
+}
+.facing-btn:hover:not(.active) {
+  background: rgba(255,255,255,.05);
+  color: var(--text-2);
+  border-color: var(--glass-border-h);
+}
+.facing-btn.active {
+  background: linear-gradient(135deg, rgba(30,90,170,.70), rgba(18,60,130,.70));
+  color: var(--accent);
+  border-color: rgba(50,179,255,.35);
+  box-shadow: 0 0 10px rgba(50,179,255,.15);
+}
+.facing-btn.active.action-check {
+  background: linear-gradient(135deg, rgba(100,100,100,.50), rgba(70,70,70,.50));
+  color: var(--text-2);
+  border-color: rgba(180,180,180,.25);
+}
+.facing-btn.active.action-all-in {
+  background: linear-gradient(135deg, rgba(160,30,50,.65), rgba(120,20,35,.65));
+  color: var(--red);
+  border-color: rgba(255,92,114,.35);
+}
+
+/* ── Game state bar ───────────────────────────────────────── */
+.game-state-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  background: rgba(6, 14, 28, 0.78);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  min-height: 88px;
+}
+.gsb-segment {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex-shrink: 0;
+}
+.gsb-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+.gsb-street {
+  display: inline-block;
+  margin-left: 7px;
+  color: var(--accent);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.gsb-cards {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 54px;
+}
+.gsb-sep {
+  width: 1px;
+  height: 58px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+.gsb-slot-empty {
+  width: 38px;
+  height: 54px;
+  border: 1px dashed rgba(50, 130, 220, 0.18);
+  border-radius: 7px;
+  background: rgba(12, 24, 42, 0.40);
+  flex-shrink: 0;
+}
+.gsb-texture {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.gsb-texture .texture-badges { margin-top: 0; }
+
+/* ── Locked Fast button (non-Pro) ────────────────────────── */
+.locked-fast-btn {
+  opacity: 0.58;
+  cursor: not-allowed !important;
+}
+.locked-fast-btn:hover:not(.active) {
+  background: rgba(255, 80, 80, 0.08) !important;
+  color: var(--red) !important;
+}
+.fast-lock-icon {
+  font-size: 11px;
+  margin-left: 4px;
+  opacity: 0.85;
+}
+
+/* ── Upgrade toast ────────────────────────────────────────── */
+.upgrade-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(14px);
+  background: rgba(10, 20, 42, 0.97);
+  border: 1px solid rgba(50, 179, 255, 0.28);
+  border-radius: var(--radius-md);
+  padding: 13px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 9900;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  text-align: center;
+  max-width: 380px;
+  width: calc(100vw - 40px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+.upgrade-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.upgrade-toast a {
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 6px;
+  text-decoration: none;
+}
+.upgrade-toast a:hover { text-decoration: underline; }
+
+/* ── Card Selection Area (below game state bar) ──────────── */
+.card-sel-area {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+  background: rgba(8, 18, 36, 0.70);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+}
+.card-sel-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.card-sel-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  margin-bottom: 9px;
+}
+.card-sel-controls {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.btn-sel-cards {
+  flex: 1;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  background: rgba(50, 179, 255, 0.09);
+  border: 1px solid rgba(50, 179, 255, 0.26);
+  color: var(--accent);
+  transition: background .15s, border-color .15s, box-shadow .15s;
+  text-align: center;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.btn-sel-cards:hover {
+  background: rgba(50, 179, 255, 0.17);
+  border-color: rgba(50, 179, 255, 0.48);
+  box-shadow: 0 0 14px rgba(50, 179, 255, 0.14);
+}
+@media (max-width: 640px) {
+  .card-sel-area { flex-direction: column; gap: 14px; padding: 14px 16px; }
+  .card-sel-group { width: 100%; }
+}
+
+/* ── Recommended Action HUD (inside game-state-bar) ──────── */
+.gsb-rec-seg {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.gsb-rec-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+}
+/* Scale down hero-text and action-pill for the compact HUD */
+.gsb-rec-seg .hero-text {
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.gsb-rec-seg .action-pill {
+  padding: 7px 13px;
+  font-size: 11px;
+  min-width: 70px;
+}
+@media (max-width: 640px) {
+  .gsb-rec-seg { width: 100%; }
+  .gsb-rec-body { min-height: auto; }
+  .gsb-rec-seg .hero-text { font-size: 18px; max-width: none; }
+}
+
+/* ── Fast sizing badge ────────────────────────────────────── */
+.fast-sizing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.fast-sizing-tag {
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--glass-border);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.fast-sizing-tag.size-jam {
+  background: rgba(255,92,114,.15);
+  border-color: rgba(255,92,114,.35);
+  color: var(--red);
+}
+.fast-sizing-tag.size-large {
+  background: rgba(255,201,77,.12);
+  border-color: rgba(255,201,77,.30);
+  color: var(--yellow);
+}
+.fast-sizing-tag.size-medium {
+  background: var(--accent-dim);
+  border-color: rgba(50,179,255,.30);
+  color: var(--accent);
+}
+.fast-sizing-tag.size-small {
+  background: rgba(34,208,122,.12);
+  border-color: rgba(34,208,122,.28);
+  color: var(--green);
+}
+</style>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<script>
+  window.USER_PLAN    = "{{ user_plan }}";
+  window.FEATURE_TIER = "{{ feature_tier }}";
+  window.USER_CREDITS = "{{ user_credits }}";
+</script>
+
+<div class="app-layout">
+
+  <!-- ──────────────────────────────────────────────────────
+       GAME STATE BAR — hero hand + board, always visible
+  ─────────────────────────────────────────────────────── -->
+  <div class="game-state-bar">
+
+    <!-- Hero Hand -->
+    <div class="gsb-segment">
+      <div class="gsb-label">Hero Hand</div>
+      <div class="gsb-cards" id="heroCards"></div>
+    </div>
+
+    <div class="gsb-sep"></div>
+
+    <!-- Board -->
+    <div class="gsb-segment">
+      <div class="gsb-label">Board<span class="gsb-street" id="lbsStage">Pre-flop</span></div>
+      <div class="gsb-cards" id="boardCards"></div>
+    </div>
+
+    <!-- Board texture badges (appear after first decision, fills gap before rec action) -->
+    <div class="gsb-texture">
+      <div class="texture-badges" id="textureBox"></div>
+    </div>
+
+    <div class="gsb-sep"></div>
+
+    <!-- Recommended Action — HUD display (compact) -->
+    <div class="gsb-segment gsb-rec-seg">
+      <div class="gsb-label">Rec. Action</div>
+      <div class="gsb-rec-body">
+        <div class="hero-text" id="heroText">—</div>
+        <div class="action-pill pill-idle" id="actionPill">Idle</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────
+       CARD SELECTION AREA — anchored below the game state bar
+       Hidden inputs keep hand/board state readable by JS.
+  ─────────────────────────────────────────────────────── -->
+  <div class="card-sel-area">
+
+    <!-- State inputs (hidden — JS reads/writes these) -->
+    <input id="hand"  type="hidden" value="Ah,Kd" />
+    <input id="board" type="hidden" value="Qs,Jh,2c" />
+
+    <!-- Hero Hand group -->
+    <div class="card-sel-group">
+      <div class="card-sel-label">Hero Hand</div>
+      <div class="card-sel-controls">
+        <button class="btn-sel-cards"
+                data-picker-toggle="hand"
+                onclick="toggleInlinePicker('hand')">Select Hero Hand</button>
+        <button class="btn-card-clear"
+                onclick="clearInlinePicker('hand')">Clear</button>
+      </div>
+      <div id="handDropdown" class="card-dropdown" onclick="event.stopPropagation()"></div>
+    </div>
+
+    <div class="csa-div"></div>
+
+    <!-- Board group -->
+    <div class="card-sel-group">
+      <div class="card-sel-label">Board</div>
+      <div class="card-sel-controls">
+        <button class="btn-sel-cards"
+                data-picker-toggle="board"
+                onclick="toggleInlinePicker('board')">Select Board</button>
+        <button class="btn-card-clear"
+                onclick="clearInlinePicker('board')">Clear</button>
+      </div>
+      <div id="boardDropdown" class="card-dropdown" onclick="event.stopPropagation()"></div>
+    </div>
+
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────
+       PRIMARY ACTION — Get Decision
+  ─────────────────────────────────────────────────────── -->
+  <div class="primary-action-area">
+    <button id="submitBtn" class="btn-primary btn-get-decision" onclick="sendDecision()">
+      Get Decision
+    </button>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────
+       LEFT — FORM PANEL
+  ─────────────────────────────────────────────────────── -->
+  <section class="glass-panel form-panel" id="formPanel">
+    <div class="section-header">
+      <div class="section-title" data-i18n="label-hand-setup">Hand Setup</div>
+      <div class="section-badge" id="modeBadge">Full</div>
+    </div>
+
+    <!-- ── Mode toggle (visible to all; Fast locked for non-Pro) ── -->
+    <div class="mode-toggle-bar">
+      {% if feature_tier == 'pro' %}
+      <button class="mode-toggle-btn fast-btn"
+              data-mode="fast" onclick="setAppMode('fast')">
+        ⚡ Fast Decision
+      </button>
+      {% else %}
+      <button class="mode-toggle-btn fast-btn locked-fast-btn"
+              data-mode="fast" onclick="showFastLockToast()" aria-disabled="true">
+        ⚡ Fast Decision <span class="fast-lock-icon">🔒</span>
+      </button>
+      {% endif %}
+      <button class="mode-toggle-btn full-btn active"
+              data-mode="full" onclick="setAppMode('full')">
+        🔬 Full Analysis
+      </button>
+    </div>
+
+    <!-- Position (always visible) -->
+    <div class="field">
+      <label data-i18n="label-position">Position</label>
+      <select id="position">
+        <option>UTG</option><option>MP</option><option>CO</option>
+        <option selected>BTN</option><option>SB</option><option>BB</option>
+      </select>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         FAST MODE FIELDS
+    ══════════════════════════════════════════════════ -->
+    <div id="fastModeFields" style="display:none">
+
+      <!-- Stack Depth -->
+      <div class="field">
+        <label data-i18n="label-stack-depth">Stack Depth</label>
+        <div class="segment-control segment-4 stack-depth-group">
+          <button class="seg-btn" data-value="short">
+            <span class="seg-icon">🪙</span>
+            <span class="seg-label">Short<br>&lt;20bb</span>
+          </button>
+          <button class="seg-btn active" data-value="medium">
+            <span class="seg-icon">💵</span>
+            <span class="seg-label">Med<br>20-40bb</span>
+          </button>
+          <button class="seg-btn" data-value="deep">
+            <span class="seg-icon">💰</span>
+            <span class="seg-label">Deep<br>40-100bb</span>
+          </button>
+          <button class="seg-btn" data-value="very_deep">
+            <span class="seg-icon">🏦</span>
+            <span class="seg-label">Very<br>100bb+</span>
+          </button>
+        </div>
+        <div class="help">Approximate effective stack relative to the big blind.</div>
+      </div>
+
+      <!-- Facing Action -->
+      <div class="field">
+        <label data-i18n="label-facing-action">Facing Action</label>
+        <div class="facing-action-grid">
+          <button class="facing-btn action-check" data-value="check">Check</button>
+          <button class="facing-btn active" data-value="small">Small (33%)</button>
+          <button class="facing-btn" data-value="medium">Medium (50%)</button>
+          <button class="facing-btn" data-value="large">Large (75%)</button>
+          <button class="facing-btn" data-value="pot">Pot Bet</button>
+          <button class="facing-btn action-all-in" data-value="all_in">All-In</button>
+        </div>
+        <div class="help">The bet or action you are currently facing at the table.</div>
+      </div>
+
+    </div><!-- /fastModeFields -->
+
+    <!-- ══════════════════════════════════════════════════
+         FULL ANALYSIS FIELDS
+    ══════════════════════════════════════════════════ -->
+    <div id="fullModeFields">
+
+      <!-- Players -->
+      <div class="field">
+        <label data-i18n="label-players">Players at Table</label>
+        <input id="players" type="number" value="2" min="2" max="9" />
+      </div>
+
+      <!-- Pot + Bet -->
+      <div class="grid-2">
+        <div class="field">
+          <label data-i18n="label-pot">Pot</label>
+          <input id="pot" type="number" value="100" min="0" />
+        </div>
+        <div class="field">
+          <label data-i18n="label-bet">Bet to Call</label>
+          <input id="bet" type="number" value="20" min="0" />
+        </div>
+      </div>
+
+      <!-- Stack + Simulations -->
+      <div class="grid-2">
+        <div class="field">
+          <label data-i18n="label-stack">Hero Stack</label>
+          <input id="stack" type="number" value="500" min="0" />
+        </div>
+        <div class="field" id="simsField">
+          <label data-i18n="label-simulations">Simulations</label>
+          <input id="simulations" type="number" value="3000" min="1000" max="10000" />
+        </div>
+      </div>
+
+      <!-- Hero Line — Pro only; hidden input (value "none") for beginner -->
+      {% if feature_tier == 'pro' %}
+      <div class="field">
+        <label data-i18n="label-hero-line">Hero Line</label>
+        <select id="line">
+          <option value="none" selected>None</option>
+          <option value="passive">Passive</option>
+          <option value="aggressive">Aggressive</option>
+          <option value="check_raise">Check-Raise</option>
+        </select>
+        <div class="help">Prior action line — affects bluff credibility and bluff-catch reads.</div>
+      </div>
+      {% else %}
+      {# Keep id="line" in DOM so JS can read it; always sends "none" #}
+      <select id="line" style="display:none;">
+        <option value="none" selected>None</option>
+      </select>
+      {% endif %}
+
+      <!-- Player Profile — Pro only -->
+      {% if feature_tier == 'pro' %}
+      <div class="field">
+        <label>Opponent Profile</label>
+        <div class="segment-control segment-4 profile-group">
+          <button class="seg-btn active" data-value="reg">
+            <span class="seg-icon">🎯</span><span class="seg-label">Reg</span>
+          </button>
+          <button class="seg-btn" data-value="tight">
+            <span class="seg-icon">🔒</span><span class="seg-label">Tight</span>
+          </button>
+          <button class="seg-btn" data-value="loose">
+            <span class="seg-icon">🌀</span><span class="seg-label">Loose</span>
+          </button>
+          <button class="seg-btn" data-value="fish">
+            <span class="seg-icon">🐟</span><span class="seg-label">Fish</span>
+          </button>
+        </div>
+        <div class="help">Adjusts fold equity, bluff frequency, and bet sizing.</div>
+      </div>
+      {% else %}
+      <div class="field locked-overlay" style="position:relative;">
+        <label>Opponent Profile</label>
+        <div class="segment-control segment-4" style="opacity:.32;pointer-events:none;">
+          <button class="seg-btn active"><span class="seg-icon">🎯</span><span class="seg-label">Reg</span></button>
+          <button class="seg-btn"><span class="seg-icon">🔒</span><span class="seg-label">Tight</span></button>
+          <button class="seg-btn"><span class="seg-icon">🌀</span><span class="seg-label">Loose</span></button>
+          <button class="seg-btn"><span class="seg-icon">🐟</span><span class="seg-label">Fish</span></button>
+        </div>
+        <div class="lock-mask">
+          <span class="lock-icon">🔒</span>
+          <span class="lock-label">Pro feature</span>
+          <a href="{{ url_for('pages.pricing') }}" class="lock-btn">Upgrade</a>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /fullModeFields -->
+
+    <!-- Actions (always visible) -->
+    <div class="actions-row">
+      <button class="btn-secondary btn-reset-full" onclick="resetForm()">Reset</button>
+    </div>
+
+    <!-- Credits warning (credits-based users only) -->
+    {% if user_plan == 'credits' %}
+    <div id="creditsWarningBox"
+         style="margin-top:12px;padding:10px 14px;background:rgba(255,201,77,.10);border:1px solid rgba(255,201,77,.25);border-radius:9px;font-size:.82rem;color:var(--yellow);">
+      ⚡ <span id="creditsWarningText">
+        <b id="inlineCreditsCount">{{ user_credits }}</b>
+        decision{{ 's' if user_credits != 1 else '' }} remaining.
+      </span>
+      Each decision costs 1 credit.
+      <a href="{{ url_for('pages.pricing') }}" style="color:var(--accent);font-weight:600;">Buy more →</a>
+    </div>
+    {% endif %}
+
+    <!-- Notation legend -->
+    <div class="legend">
+      <div class="legend-title">Card Notation Guide</div>
+      <div class="legend-grid">
+        <div class="legend-item"><b>A</b> Ace &nbsp;<b>K</b> King</div>
+        <div class="legend-item"><b>Q</b> Queen &nbsp;<b>J</b> Jack</div>
+        <div class="legend-item"><b>T</b> Ten &nbsp;<b>9–2</b> Number</div>
+        <div class="legend-item"><b>h</b> ♥ &nbsp;<b>d</b> ♦ &nbsp;<b>c</b> ♣ &nbsp;<b>s</b> ♠</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────
+       RIGHT — RESULTS PANEL
+  ─────────────────────────────────────────────────────── -->
+  <section class="glass-panel results-panel">
+    <div class="section-header">
+      <div class="section-title" data-i18n="label-decision-output">Decision Output</div>
+      <div class="section-badge">Live</div>
+    </div>
+
+    <!-- ① Explanation -->
+    <div class="explanation-box" id="explanationBox">
+      Fill in the hand details and click <strong>Get Decision</strong> to see the recommendation and EV analysis.
+    </div>
+
+    <!-- ② Fast mode: sizing recommendation (hidden in full mode) -->
+    <div id="fastSizingBadge" class="fast-sizing-row" style="display:none">
+      <span>Recommended raise size:</span>
+      <span id="fastSizingCategory" class="fast-sizing-tag">—</span>
+    </div>
+
+    <!-- ④ Decision Tags — Pro only -->
+    {% if feature_tier == 'pro' %}
+    <div class="panel-section" id="tagsSection" style="display:none">
+      <div class="panel-section-label">🏷 Decision Tags</div>
+      <div class="tags-row" id="tagsRow"></div>
+    </div>
+    {% else %}
+    <div class="panel-section">
+      <div class="panel-section-label">🏷 Decision Tags</div>
+      <div class="upgrade-notice">
+        <span class="upgrade-notice-icon">🔒</span>
+        <div class="upgrade-notice-body">
+          <div class="upgrade-notice-title">Pro Feature</div>
+          <div class="upgrade-notice-desc">
+            Decision tags (VALUE, BLUFF, PROTECTION…) are available on the Pro plan.
+            <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ⑤ Core Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value" id="statWinRate">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Call EV</div>
+        <div class="stat-value" id="statCallEv">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Raise EV</div>
+        <div class="stat-value" id="statRaiseEv">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Confidence</div>
+        <div class="stat-value" id="statConfidence">—</div>
+      </div>
+    </div>
+
+    <!-- ⑥ AI Reasoning — Pro only -->
+    {% if feature_tier == 'pro' %}
+    <div class="panel-section" id="reasoningSection" style="display:none">
+      <div class="panel-section-label">🧠 AI Reasoning</div>
+      <ul class="reasoning-list" id="reasoningList"></ul>
+    </div>
+    {% else %}
+    <div class="panel-section">
+      <div class="panel-section-label">🧠 AI Reasoning</div>
+      <div class="upgrade-notice">
+        <span class="upgrade-notice-icon">🔒</span>
+        <div class="upgrade-notice-body">
+          <div class="upgrade-notice-title">Pro Feature</div>
+          <div class="upgrade-notice-desc">
+            Multi-bullet AI coaching and decision reasoning are available on the Pro plan.
+            <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ⑦ Decision Metrics — Pro only -->
+    {% if feature_tier == 'pro' %}
+    <div class="panel-section" id="metricsSection" style="display:none">
+      <div class="panel-section-label">📊 Decision Metrics</div>
+      <div class="metrics-grid">
+        <div class="metric-bar-item">
+          <div class="metric-bar-label">
+            <span>Confidence Score</span>
+            <span class="metric-bar-val" id="metricConfidenceVal">—</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill fill-confidence" id="barConfidence" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="metric-bar-item">
+          <div class="metric-bar-label">
+            <span>Aggression Score</span>
+            <span class="metric-bar-val" id="metricAggressionVal">—</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill fill-aggression" id="barAggression" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="metric-inline">
+          <span>Risk Level</span>
+          <span class="risk-badge risk-none" id="riskBadge">—</span>
+        </div>
+        <div class="metric-inline">
+          <span>Population Adjustment</span>
+          <span class="pop-factor" id="popAdjVal">—</span>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="panel-section">
+      <div class="panel-section-label">📊 Decision Metrics</div>
+      <div class="upgrade-notice">
+        <span class="upgrade-notice-icon">🔒</span>
+        <div class="upgrade-notice-body">
+          <div class="upgrade-notice-title">Pro Feature</div>
+          <div class="upgrade-notice-desc">
+            Confidence score, aggression score, and risk level are available on the Pro plan.
+            <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ⑧ What-If Engine — Pro only -->
+    {% if feature_tier == 'pro' %}
+    <div class="panel-section" id="whatifSection" style="display:none">
+      <div class="panel-section-label">🔮 What-If Engine</div>
+      <div class="whatif-grid" id="whatifGrid"></div>
+    </div>
+    {% else %}
+    <div class="panel-section">
+      <div class="panel-section-label">🔮 What-If Engine</div>
+      <div class="upgrade-notice">
+        <span class="upgrade-notice-icon">🔒</span>
+        <div class="upgrade-notice-body">
+          <div class="upgrade-notice-title">Pro Feature</div>
+          <div class="upgrade-notice-desc">
+            What-If analysis simulates opponent raises and future board cards.
+            <a href="{{ url_for('pages.pricing') }}">Upgrade to Pro →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ⑨ Key Metrics -->
+    <div class="inner-panel" style="margin-bottom:16px">
+      <div class="inner-panel-title">Key Metrics</div>
+      <div class="metric-list" id="metricsBox">
+        <div class="metric-item"><span>Fold Equity</span><span>—</span></div>
+        <div class="metric-item"><span>SPR</span><span>—</span></div>
+        <div class="metric-item"><span>Hand Class</span><span>—</span></div>
+        <div class="metric-item"><span>Range Advantage</span><span>—</span></div>
+        <div class="metric-item"><span>Pot Odds</span><span>—</span></div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      For scenario analysis only. Does not replace live reads, bankroll discipline, or real-time table judgment.
+    </div>
+  </section>
+
+</div><!-- /app-layout -->
+
+<!-- ══════════════════════════════════════════════════════════
+     CARD PICKER OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="cardPickerOverlay" class="picker-overlay" onclick="closeCardPicker(event)">
+  <div class="picker-modal" onclick="event.stopPropagation()">
+    <div class="picker-head">
+      <div>
+        <div class="picker-title"    id="pickerTitle">Select Cards</div>
+        <div class="picker-subtitle" id="pickerSubtitle">Choose cards visually from the full deck.</div>
+      </div>
+      <div class="picker-toolbar">
+        <button type="button" class="btn-ghost" onclick="clearPickerSelection()">Clear</button>
+        <button type="button" class="btn-ghost" onclick="applyCardSelection()">Apply</button>
+        <button type="button" class="btn-ghost" onclick="forceCloseCardPicker()">✕ Close</button>
+      </div>
+    </div>
+    <div class="picker-preview" id="pickerPreview">
+      <div class="picker-empty">No cards selected yet.</div>
+    </div>
+    <div class="picker-grid" id="pickerGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOADING OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none">
+  <div class="spinner"></div>
+  <div class="spinner-text">Running Analysis</div>
+  <div class="spinner-sub" id="spinnerSub">Monte Carlo · EV · Coach Layer</div>
+</div>
+
+<!-- Upgrade toast (shown when non-Pro clicks Fast Decision) -->
+<div id="upgradeToast" class="upgrade-toast" role="alert" aria-live="polite">
+  🔒 <strong>Fast Decision</strong> is a Pro feature.
+  <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock content %}

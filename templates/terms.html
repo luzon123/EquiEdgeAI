@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service{% endblock %}
+
+{% block content %}
+<div class="content-page">
+  <h1>Terms of Service</h1>
+  <p class="page-sub">Last updated: January 2026</p>
+
+  <h2>1. Acceptance of Terms</h2>
+  <p>
+    By accessing or using Decision Weapon ("the Service"), you agree to be bound by these
+    Terms of Service. If you do not agree to these terms, do not use the Service.
+  </p>
+
+  <h2>2. Description of Service</h2>
+  <p>
+    Decision Weapon is a poker decision analysis tool that uses Monte Carlo simulation and
+    EV calculations to suggest actions in Texas Hold'em poker. The Service is provided for
+    educational and scenario analysis purposes only.
+  </p>
+
+  <h2>3. No Gambling Advisory</h2>
+  <p>
+    Decision Weapon does not facilitate gambling and is not a gambling service. The Service
+    provides statistical analysis and probability calculations. We do not encourage, promote,
+    or facilitate any form of illegal gambling activity.
+  </p>
+
+  <h2>4. Account Responsibilities</h2>
+  <ul>
+    <li>You are responsible for maintaining the confidentiality of your account credentials.</li>
+    <li>You must be at least 18 years of age to use the Service.</li>
+    <li>You are responsible for all activity that occurs under your account.</li>
+    <li>You must provide accurate and complete information during registration.</li>
+  </ul>
+
+  <h2>5. Credits and Plans</h2>
+  <p>
+    Free accounts receive a limited number of credits upon registration. Paid plans provide
+    expanded access to features. Credits and plan benefits are non-transferable and have no
+    cash value. We reserve the right to modify pricing and plan features with reasonable notice.
+  </p>
+
+  <h2>6. Limitation of Liability</h2>
+  <p>
+    The Service is provided "as is" without warranties of any kind. Decision Weapon shall not
+    be liable for any financial losses, damages, or outcomes resulting from actions taken based
+    on the Service's recommendations. The engine's suggestions are probabilistic estimates,
+    not guarantees.
+  </p>
+
+  <h2>7. Prohibited Use</h2>
+  <ul>
+    <li>Using the Service to facilitate cheating or collusion in any game.</li>
+    <li>Reverse engineering, copying, or redistribution of the Service.</li>
+    <li>Automated scraping or API abuse beyond your plan's intended use.</li>
+    <li>Creating accounts for others without their consent.</li>
+  </ul>
+
+  <h2>8. Termination</h2>
+  <p>
+    We reserve the right to suspend or terminate accounts that violate these terms, engage in
+    fraudulent activity, or abuse the Service at our discretion.
+  </p>
+
+  <h2>9. Changes to Terms</h2>
+  <p>
+    We may update these terms at any time. Continued use of the Service after changes
+    constitutes acceptance of the updated terms.
+  </p>
+
+  <h2>10. Contact</h2>
+  <p>
+    Questions about these terms? Contact us at
+    <a href="{{ url_for('pages.contact') }}" style="color:var(--accent);">support@decisionweapon.io</a>.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends "admin/base_admin.html" %}
+{% block admin_title %}User: {{ user.username }}{% endblock %}
+
+{% block admin_content %}
+
+<!-- Back link -->
+<div style="margin-bottom:20px;">
+  <a href="{{ url_for('admin.users') }}"
+     style="color:var(--muted);text-decoration:none;font-size:.88rem;">
+    ← Back to Users
+  </a>
+</div>
+
+<div class="admin-page-title">{{ user.username }}</div>
+<div class="admin-page-sub">{{ user.email }}</div>
+
+<div class="admin-detail-grid">
+
+  <!-- ── User Info ────────────────────────────────────────────── -->
+  <div class="admin-panel">
+    <h3>Account Info</h3>
+
+    <div class="info-row">
+      <span class="info-label">User ID</span>
+      <span>#{{ user.id }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Username</span>
+      <b>{{ user.username }}</b>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Email</span>
+      <span style="color:var(--muted);">{{ user.email }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Purchase Tier</span>
+      {% if user.plan == 'pro' and user.plan_active %}
+        <span class="table-badge badge-pro">Pro</span>
+      {% elif user.plan == 'beginner' and user.plan_active %}
+        <span class="table-badge badge-beginner">Beginner</span>
+      {% else %}
+        <span class="table-badge badge-none">None</span>
+      {% endif %}
+    </div>
+    <div class="info-row">
+      <span class="info-label">Purchased</span>
+      <span style="color:var(--muted);">
+        {{ user.purchased_at.strftime('%Y-%m-%d') if user.purchased_at else '—' }}
+      </span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Credits</span>
+      <span style="color:var(--green);font-weight:700;">{{ user.credits }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Total Decisions</span>
+      <span>{{ user.total_decisions }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Last Active</span>
+      <span style="color:var(--muted);">
+        {{ user.last_used_at.strftime('%Y-%m-%d %H:%M') if user.last_used_at else 'Never' }}
+      </span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Joined</span>
+      <span style="color:var(--muted);">
+        {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}
+      </span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Status</span>
+      {% if user.is_active %}
+        <span class="table-badge badge-active">Active</span>
+      {% else %}
+        <span class="table-badge badge-inactive">Deactivated</span>
+      {% endif %}
+    </div>
+    <div class="info-row">
+      <span class="info-label">Admin</span>
+      {% if user.is_admin %}
+        <span class="table-badge badge-admin">Yes</span>
+      {% else %}
+        <span style="color:var(--muted);">No</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Actions ──────────────────────────────────────────────── -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+
+    <!-- Grant Purchase Tier -->
+    <div class="admin-panel">
+      <h3>Grant Purchase Tier</h3>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">
+        Grants lifetime access to the selected tier. Setting to "None" revokes access.
+      </p>
+      <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="action" value="update_plan" />
+        <select class="admin-select" name="plan">
+          <option value="none"     {% if user.plan == 'none'     %}selected{% endif %}>None (No Access)</option>
+          <option value="beginner" {% if user.plan == 'beginner' %}selected{% endif %}>Beginner — $99.90</option>
+          <option value="pro"      {% if user.plan == 'pro'      %}selected{% endif %}>Pro — $149.90</option>
+        </select>
+        <button type="submit" class="btn-admin btn-admin-blue">Grant Tier</button>
+      </form>
+    </div>
+
+    <!-- Adjust Credits -->
+    <div class="admin-panel">
+      <h3>Adjust Credits</h3>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">
+        Current balance: <b style="color:var(--green);">{{ user.credits }}</b> credits.<br>
+        Enter a positive number to add, negative to remove.
+      </p>
+      <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="action" value="update_credits" />
+        <input class="admin-input" type="number" name="credits_delta"
+               placeholder="e.g. +10 or -5" required />
+        <button type="submit" class="btn-admin btn-admin-green">Update Credits</button>
+      </form>
+    </div>
+
+    <!-- Account Status -->
+    <div class="admin-panel">
+      <h3>Account Status</h3>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px;">
+        {% if user.is_active %}
+          This account is currently <b style="color:var(--green);">active</b>.
+          Deactivating will block the user from logging in or making decisions.
+        {% else %}
+          This account is currently <b style="color:var(--red);">deactivated</b>.
+          Activating will restore full access.
+        {% endif %}
+      </p>
+      <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="action" value="toggle_active" />
+        {% if user.is_active %}
+          <button type="submit" class="btn-admin btn-admin-red"
+                  onclick="return confirm('Deactivate this account?')">
+            Deactivate Account
+          </button>
+        {% else %}
+          <button type="submit" class="btn-admin btn-admin-green">Activate Account</button>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Admin Toggle -->
+    <div class="admin-panel">
+      <h3>Admin Access</h3>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px;">
+        {% if user.is_admin %}
+          This user <b style="color:var(--orange);">has admin access</b>.
+          Revoking will remove access to this panel.
+        {% else %}
+          This user does not have admin access.
+        {% endif %}
+        {% if user.id == current_user.id %}
+          <br><span style="color:var(--red);">You cannot change your own admin status.</span>
+        {% endif %}
+      </p>
+      {% if user.id != current_user.id %}
+      <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="action" value="toggle_admin" />
+        {% if user.is_admin %}
+          <button type="submit" class="btn-admin btn-admin-red"
+                  onclick="return confirm('Revoke admin access for {{ user.username }}?')">
+            Revoke Admin
+          </button>
+        {% else %}
+          <button type="submit" class="btn-admin btn-admin-orange"
+                  onclick="return confirm('Grant admin access to {{ user.username }}?')">
+            Grant Admin
+          </button>
+        {% endif %}
+      </form>
+      {% endif %}
+    </div>
+
+  </div><!-- /actions column -->
+</div><!-- /detail-grid -->
+
+<!-- ── Purchase History ─────────────────────────────────────── -->
+<div class="admin-table-wrap" style="margin-top:28px;">
+  <div class="admin-table-head">
+    <h3>Purchase History</h3>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Plan</th>
+        <th>Amount</th>
+        <th>PayPal Order ID</th>
+        <th>Capture ID</th>
+        <th>Status</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in user.purchases.order_by(none) %}
+      <tr>
+        <td style="color:var(--muted);font-size:.82rem;">
+          {{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '—' }}
+        </td>
+        <td>
+          {% if p.plan == 'pro' %}
+            <span class="table-badge badge-pro">Pro</span>
+          {% elif p.plan == 'beginner' %}
+            <span class="table-badge badge-beginner">Beginner</span>
+          {% else %}
+            {{ p.plan }}
+          {% endif %}
+        </td>
+        <td style="color:var(--green);font-weight:700;">${{ p.amount_usd }}</td>
+        <td style="color:var(--muted);font-size:.78rem;font-family:monospace;">
+          {{ p.paypal_order_id }}
+        </td>
+        <td style="color:var(--muted);font-size:.78rem;font-family:monospace;">
+          {{ p.paypal_capture_id or '—' }}
+        </td>
+        <td>
+          {% if p.status == 'completed' %}
+            <span class="table-badge badge-active">Completed</span>
+          {% elif p.status == 'pending' %}
+            <span class="table-badge badge-none">Pending</span>
+          {% else %}
+            <span class="table-badge badge-inactive">{{ p.status }}</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--muted);font-size:.82rem;">{{ p.source }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">
+          No purchases yet.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

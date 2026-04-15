@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Purchase Successful{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card" style="max-width:520px;text-align:center;">
+
+    <div style="font-size:3rem;margin-bottom:16px;">✅</div>
+
+    <div class="auth-title" style="color:var(--green);">You're in.</div>
+    <div class="auth-sub" style="margin-bottom:24px;">
+      {% if plan == 'pro' %}
+        Your <strong style="color:var(--accent);">Pro</strong> access is now active.
+        You have full engine access — no expiry, no renewal.
+      {% elif plan == 'beginner' %}
+        Your <strong style="color:var(--yellow);">Beginner</strong> access is now active.
+        Core engine features are unlocked — no expiry, no renewal.
+      {% else %}
+        Your purchase is confirmed and access has been granted.
+      {% endif %}
+    </div>
+
+    <a href="{{ url_for('pages.app_page') }}" class="btn-submit"
+       style="display:block;text-align:center;text-decoration:none;padding:14px 0;">
+      Open the Engine →
+    </a>
+
+    <div class="auth-footer" style="margin-top:16px;">
+      A confirmation will be sent to your email address.
+      Questions? <a href="{{ url_for('pages.contact') }}">Contact us.</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

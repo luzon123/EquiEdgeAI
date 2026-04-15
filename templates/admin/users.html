@@ -1,0 +1,85 @@
+{% extends "admin/base_admin.html" %}
+{% block admin_title %}Users{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page-title">Users</div>
+<div class="admin-page-sub">Manage accounts, plans, and credits</div>
+
+<div class="admin-table-wrap">
+  <div class="admin-table-head">
+    <h3>All Users <span style="color:var(--muted);font-weight:400;font-size:.85rem;">({{ users | length }})</span></h3>
+    <form method="GET" action="{{ url_for('admin.users') }}" style="display:flex;gap:8px;">
+      <input class="admin-search" type="text" name="q"
+             placeholder="Search username or email…" value="{{ search }}" />
+      <button type="submit" style="padding:7px 14px;background:var(--accent);color:#06101e;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Search
+      </button>
+      {% if search %}
+      <a href="{{ url_for('admin.users') }}"
+         style="padding:7px 12px;border:1px solid var(--glass-border);border-radius:8px;color:var(--muted);font-size:.85rem;text-decoration:none;display:flex;align-items:center;">
+        Clear
+      </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Plan</th>
+        <th>Credits</th>
+        <th>Decisions</th>
+        <th>Last Active</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td style="color:var(--muted);">{{ user.id }}</td>
+        <td>
+          <b>{{ user.username }}</b>
+          {% if user.is_admin %}<span class="table-badge badge-admin" style="margin-left:5px;">Admin</span>{% endif %}
+        </td>
+        <td style="color:var(--muted);font-size:.84rem;">{{ user.email }}</td>
+        <td>
+          {% if user.plan == 'pro' and user.plan_active %}
+            <span class="table-badge badge-pro">Pro</span>
+          {% elif user.plan == 'beginner' and user.plan_active %}
+            <span class="table-badge badge-beginner">Beginner</span>
+          {% else %}
+            <span class="table-badge badge-none">Free</span>
+          {% endif %}
+        </td>
+        <td>{{ user.credits }}</td>
+        <td>{{ user.total_decisions }}</td>
+        <td style="color:var(--muted);font-size:.82rem;">
+          {{ user.last_used_at.strftime('%b %d %H:%M') if user.last_used_at else '—' }}
+        </td>
+        <td>
+          {% if user.is_active %}
+            <span class="table-badge badge-active">Active</span>
+          {% else %}
+            <span class="table-badge badge-inactive">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('admin.user_detail', user_id=user.id) }}"
+             class="table-action-link">Edit →</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" style="text-align:center;color:var(--muted);padding:28px;">
+          {% if search %}No users match "{{ search }}".{% else %}No users found.{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

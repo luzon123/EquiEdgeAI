@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Decision Weapon{% endblock %} — Poker AI Engine</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% block navbar %}
+<!-- ══════════════════════════════════════════════════════════
+     SITE NAVIGATION
+═══════════════════════════════════════════════════════════ -->
+<nav class="site-nav">
+  <div class="nav-inner">
+
+    <!-- Brand -->
+    <a href="{{ url_for('pages.home') }}" class="nav-brand">
+      <span class="nav-brand-icon">♠</span>
+      <span class="nav-brand-text">
+        Decision Weapon
+        <span class="nav-brand-sub">Poker Engine v2 · AI Coach Mode</span>
+      </span>
+    </a>
+
+    <!-- Links -->
+    <div class="nav-links">
+      <a href="{{ url_for('pages.home') }}"
+         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a>
+
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('pages.app_page') }}"
+         class="nav-engine-btn {% if request.endpoint == 'pages.app_page' %}active{% endif %}">
+        ⚡ Engine
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('pages.pricing') }}"
+         class="{% if request.endpoint == 'pages.pricing' %}active{% endif %}">Pricing</a>
+      <a href="{{ url_for('pages.contact') }}"
+         class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a>
+
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('pages.settings') }}"
+         class="{% if request.endpoint == 'pages.settings' %}active{% endif %}">Settings</a>
+      {% endif %}
+    </div>
+
+    <!-- User area -->
+    <div class="nav-user">
+      {% if current_user.is_authenticated %}
+
+        {% if current_user.is_admin %}
+          <a href="{{ url_for('admin.dashboard') }}" class="nav-admin-link">Admin</a>
+        {% endif %}
+
+        <!-- Plan badge -->
+        {% set tier = current_user.get_plan_tier() %}
+        {% set ftier = current_user.get_feature_tier() %}
+        {% if tier == 'pro' %}
+          <span class="plan-badge plan-pro">Pro</span>
+        {% elif tier == 'beginner' %}
+          <span class="plan-badge plan-beginner">Beginner</span>
+        {% elif tier == 'credits' %}
+          <span class="plan-badge plan-credits">Credits</span>
+        {% else %}
+          <span class="plan-badge plan-none">Free</span>
+        {% endif %}
+
+        <!-- Credits chip (show when no active plan) -->
+        {% if not current_user.has_active_plan() %}
+          <span class="credits-chip" id="navCreditsChip"
+                {% if current_user.credits == 0 %}style="display:none"{% endif %}>
+            <b id="navCreditsCount">{{ current_user.credits }}</b> cr
+          </span>
+        {% endif %}
+
+        <!-- Plan status label -->
+        {% if ftier == 'pro' %}
+          <span class="nav-plan-status nav-plan-status-pro">⚡ Full Access</span>
+        {% elif tier == 'credits' %}
+          <span class="nav-plan-status nav-plan-status-credits">
+            <span id="headerCreditsCount">{{ current_user.credits }}</span> remaining
+          </span>
+        {% endif %}
+
+        <!-- Engine status -->
+        <div class="nav-engine-status">
+          <div class="status-dot"></div>
+          Engine Ready
+        </div>
+
+        <span class="nav-username">{{ current_user.username }}</span>
+
+        <a href="{{ url_for('auth.logout') }}" class="btn-nav btn-nav-ghost">Logout</a>
+
+      {% else %}
+        <a href="{{ url_for('auth.login') }}"    class="btn-nav btn-nav-ghost">Login</a>
+        <a href="{{ url_for('auth.register') }}" class="btn-nav btn-nav-primary">Get Started</a>
+      {% endif %}
+    </div>
+
+  </div>
+</nav>
+{% endblock navbar %}
+
+<!-- ── Flash messages ─────────────────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-list">
+      {% for category, message in messages %}
+        <div class="flash-msg {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ── Main content ───────────────────────────────────────────── -->
+<div class="page-wrap">
+  {% block content %}{% endblock %}
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────────── -->
+{% block footer %}
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">♠ Decision Weapon</div>
+    <div class="footer-links">
+      <a href="{{ url_for('pages.pricing') }}">Pricing</a>
+      <a href="{{ url_for('pages.contact') }}">Contact</a>
+      <a href="{{ url_for('pages.terms') }}">Terms</a>
+      <a href="{{ url_for('pages.privacy') }}">Privacy</a>
+      <a href="{{ url_for('pages.legal') }}">Legal</a>
+    </div>
+    <div class="footer-copy">
+      &copy; 2026 Decision Weapon. For scenario analysis only — not a substitute for
+      real-time table judgment, bankroll discipline, or professional advice.
+    </div>
+  </div>
+</footer>
+{% endblock footer %}
+
+</body>
+</html>
