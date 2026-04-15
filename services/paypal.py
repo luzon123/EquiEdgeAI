@@ -26,7 +26,7 @@ logger = get_logger()
 # Server-side plan registry — single source of truth for prices
 # ---------------------------------------------------------------------------
 PLAN_PRICES: dict[str, str] = {
-    "beginner": "99.90",
+    "beginner": "1.00",
     "pro":      "149.90",
 }
 
