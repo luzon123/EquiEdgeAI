@@ -1,0 +1,43 @@
+# 🔹 Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 🔹 Virtual environment
+venv/
+.env/
+.venv/
+
+# 🔹 Environment variables (VERY IMPORTANT 🚨)
+.env
+.env.*
+
+# 🔹 Flask / app
+instance/
+*.db
+*.sqlite3
+
+# 🔹 Logs
+*.log
+
+# 🔹 VS Code
+.vscode/
+
+# 🔹 OS files
+.DS_Store
+Thumbs.db
+
+# 🔹 Testing / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# 🔹 Build / dist
+build/
+dist/
+*.egg-info/
+
+# 🔹 Secrets / keys (critical!)
+secrets.json
+config.json
