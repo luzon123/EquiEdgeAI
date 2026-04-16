@@ -93,7 +93,7 @@
     <div class="admin-panel">
       <h3>Grant Purchase Tier</h3>
       <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">
-        Grants lifetime access to the selected tier. Setting to "None" revokes access.
+        Grants access to the selected tier. Setting to "None" revokes access.
       </p>
       <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
         <input type="hidden" name="action" value="update_plan" />

@@ -50,7 +50,7 @@ class User(UserMixin, db.Model):
     # Plan / access helpers
     # ------------------------------------------------------------------
     def has_active_plan(self) -> bool:
-        """True if the user has a purchased tier (lifetime access — no expiry check)."""
+        """True if the user has a purchased tier (no expiry check)."""
         return self.plan_active and self.plan != "none"
 
     def has_access(self) -> bool:

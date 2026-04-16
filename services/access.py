@@ -7,7 +7,7 @@ Responsibilities:
   - Deduct credits or record tier-based usage
   - Strip pro-only response fields for non-pro users
 
-Tiers are granted as one-time purchases (lifetime access).
+Tiers are granted as one-time purchases.
 Stripe or any payment provider can be integrated by setting plan/plan_active
 on the User model after a confirmed payment.
 """

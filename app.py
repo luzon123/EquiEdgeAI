@@ -115,7 +115,7 @@ def create_app() -> Flask:
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            click.echo(f"Admin user '{username}' created with Pro tier (lifetime access).")
+            click.echo(f"Admin user '{username}' created with Pro tier.")
 
     logger.info("Poker Decision Engine (SaaS) initialized.")
     return app

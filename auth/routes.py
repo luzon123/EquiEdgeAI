@@ -104,7 +104,7 @@ def register():
 
         login_user(user)
         flash(
-            "Welcome to Decision Weapon! Purchase a tier or grab a decision credit pack to get started.",
+            "Welcome to EquiEdge AI! Purchase a tier or grab a decision credit pack to get started.",
             "success",
         )
         return redirect(url_for("pages.pricing"))

@@ -31,8 +31,8 @@ PLAN_PRICES: dict[str, str] = {
 }
 
 PLAN_LABELS: dict[str, str] = {
-    "beginner": "Decision Weapon — Beginner (Lifetime Access)",
-    "pro":      "Decision Weapon — Pro (Lifetime Access)",
+    "beginner": "EquiEdge AI — Beginner",
+    "pro":      "EquiEdge AI — Pro",
 }
 
 

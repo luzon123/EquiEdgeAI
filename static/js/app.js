@@ -1,5 +1,5 @@
 /* ============================================================
-   POKER DECISION WEAPON — Frontend Logic
+   EQUIEDGE AI — Frontend Logic
    ============================================================ */
 
 'use strict';
