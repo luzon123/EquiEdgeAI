@@ -42,6 +42,14 @@
           <li><span class="cf-check">✔</span> Full mode (5,000 sims)</li>
           <li><span class="cf-check">✔</span> Opponent exploit profiles</li>
           <li><span class="cf-check">✔</span> What-If engine (3 scenarios)</li>
+        {% elif plan == 'credits15' %}
+          <li><span class="cf-check">✔</span> 15 decision credits</li>
+          <li><span class="cf-check">✔</span> Quick mode (&lt;200ms)</li>
+          <li><span class="cf-check">✔</span> Win rate &amp; EV stats</li>
+          <li><span class="cf-check">✔</span> Board texture analysis</li>
+          <li><span class="cf-cross">✗</span> AI coaching &amp; decision tags</li>
+          <li><span class="cf-cross">✗</span> Opponent exploit profiles</li>
+          <li><span class="cf-cross">✗</span> What-If engine</li>
         {% endif %}
       </ul>
 
@@ -125,6 +133,12 @@
   const PLAN_KEY   = {{ plan | tojson }};
   const PLAN_PRICE = {{ plan_price | tojson }};
 
+  // ── CSRF helper ───────────────────────────────────────────────
+  function getCsrfToken() {
+    const el = document.querySelector('meta[name="csrf-token"]');
+    return el ? el.getAttribute('content') : '';
+  }
+
   // ── DOM refs ────────────────────────────────────────────────
   const statusEl    = document.getElementById("co-status");
   const cardFormEl  = document.getElementById("card-form-container");
@@ -148,7 +162,7 @@
     hideStatus();
     const resp = await fetch("/checkout/create-order", {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
       body:    JSON.stringify({ plan: PLAN_KEY }),
     });
     const data = await resp.json();
@@ -164,7 +178,7 @@
     try {
       const resp = await fetch("/checkout/capture-order", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
         body:    JSON.stringify({ order_id: data.orderID }),
       });
       const result = await resp.json();

@@ -24,6 +24,20 @@
   font-size: 14px;
   color: var(--muted);
 }
+.save-indicator {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+  background: rgba(0,255,128,.08);
+  border: 1px solid rgba(0,255,128,.25);
+  border-radius: 6px;
+  padding: 3px 10px;
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.save-indicator.visible { opacity: 1; }
 
 /* ── Settings section card ───────────────────────────────────── */
 .settings-card {
@@ -248,7 +262,10 @@
 <div class="settings-wrap">
 
   <div class="settings-page-header">
-    <div class="settings-page-title">Settings</div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="settings-page-title">Settings</div>
+      <span class="save-indicator" id="saveIndicator">✔ Saved</span>
+    </div>
     <div class="settings-page-sub">
       Personalize your EquiEdge AI experience.
       Settings are saved automatically to this browser.
@@ -432,7 +449,11 @@ function saveBoolSetting(key, value) {
 
 let _savedTimer = null;
 function flashSaved() {
-  // Could add a brief toast; for now just a silent save
+  const el = document.getElementById('saveIndicator');
+  if (!el) return;
+  el.classList.add('visible');
+  clearTimeout(_savedTimer);
+  _savedTimer = setTimeout(() => el.classList.remove('visible'), 2000);
 }
 
 function selectTheme(n) {

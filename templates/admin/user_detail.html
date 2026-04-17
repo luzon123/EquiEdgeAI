@@ -96,6 +96,7 @@
         Grants access to the selected tier. Setting to "None" revokes access.
       </p>
       <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="action" value="update_plan" />
         <select class="admin-select" name="plan">
           <option value="none"     {% if user.plan == 'none'     %}selected{% endif %}>None (No Access)</option>
@@ -114,6 +115,7 @@
         Enter a positive number to add, negative to remove.
       </p>
       <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="action" value="update_credits" />
         <input class="admin-input" type="number" name="credits_delta"
                placeholder="e.g. +10 or -5" required />
@@ -134,6 +136,7 @@
         {% endif %}
       </p>
       <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="action" value="toggle_active" />
         {% if user.is_active %}
           <button type="submit" class="btn-admin btn-admin-red"
@@ -162,6 +165,7 @@
       </p>
       {% if user.id != current_user.id %}
       <form method="POST" action="{{ url_for('admin.user_detail', user_id=user.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="action" value="toggle_admin" />
         {% if user.is_admin %}
           <button type="submit" class="btn-admin btn-admin-red"

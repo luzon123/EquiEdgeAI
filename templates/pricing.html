@@ -109,19 +109,12 @@
       <div class="credit-pack-amount">15 decisions</div>
       <div class="credit-pack-price">$10</div>
       <div class="credit-pack-note">$0.67 per decision</div>
-      <a href="{{ url_for('pages.contact') }}" class="pricing-cta primary" style="margin-top:14px;display:block;text-align:center;">
+      <a href="{{ url_for('checkout.checkout_page', plan='credits15') }}" class="pricing-cta primary" style="margin-top:14px;display:block;text-align:center;">
         Purchase Credits
       </a>
     </div>
   </div>
 
-  <!-- ── Payment note ─────────────────────────────────────── -->
-  <div style="text-align:center;margin-top:28px;font-size:.85rem;color:var(--muted);">
-    💳 Secure payment processing coming soon.
-    <a href="{{ url_for('pages.contact') }}" style="color:var(--accent);text-decoration:none;">
-      Contact us to manually activate your access.
-    </a>
-  </div>
 
 </section>
 

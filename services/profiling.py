@@ -7,7 +7,7 @@ to exploit systematic tendencies of that opponent type.
 """
 from __future__ import annotations
 
-from config import PLAYER_PROFILES
+from services.exploit_engine import PLAYER_PROFILES
 
 
 def get_profile_multipliers(player_profile: str) -> dict:

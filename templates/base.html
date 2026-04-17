@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <meta name="description" content="{% block meta_description %}EquiEdge AI — Poker decision engine using Monte Carlo simulation and EV calculations for Texas Hold\'em players.{% endblock %}" />
+  <meta property="og:title" content="{% block og_title %}EquiEdge AI — Poker AI Engine{% endblock %}" />
+  <meta property="og:description" content="Make statistically optimal poker decisions with Monte Carlo simulation, EV calculations, and AI coaching." />
+  <meta property="og:type" content="website" />
   <title>{% block title %}EquiEdge AI{% endblock %} — Poker AI Engine</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
   {% block extra_head %}{% endblock %}

@@ -22,11 +22,12 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
+from extensions import csrf, limiter
 from models import db
 from models.user import User
 from models.purchase import Purchase
 from services.paypal import (
-    PLAN_PRICES, PLAN_LABELS,
+    PLAN_PRICES, PLAN_LABELS, CREDIT_PACKS,
     create_order as pp_create_order,
     capture_order as pp_capture_order,
     verify_webhook_signature,
@@ -108,8 +109,12 @@ def _fulfill_purchase(
         )
         db.session.add(purchase)
 
-    # Grant the tier — only upgrade, never downgrade
-    if _PLAN_RANK.get(plan, 0) > _PLAN_RANK.get(user.plan, 0):
+    # Credit pack: add credits to balance, don't change plan
+    if plan in CREDIT_PACKS:
+        user.credits    += CREDIT_PACKS[plan]
+        user.updated_at  = now
+    # Tier upgrade: only upgrade, never downgrade
+    elif _PLAN_RANK.get(plan, 0) > _PLAN_RANK.get(user.plan, 0):
         user.plan         = plan
         user.plan_active  = True
         user.purchased_at = now
@@ -132,8 +137,8 @@ def checkout_page(plan: str):
     if plan not in PLAN_PRICES:
         abort(404)
 
-    # Prevent re-purchasing the same tier (upgrades are allowed)
-    if current_user.has_active_plan():
+    # Credit packs can always be purchased; tier re-purchase is blocked
+    if plan not in CREDIT_PACKS and current_user.has_active_plan():
         current_rank = _PLAN_RANK.get(current_user.plan, 0)
         new_rank     = _PLAN_RANK.get(plan, 0)
         if new_rank <= current_rank:
@@ -159,6 +164,7 @@ def checkout_page(plan: str):
 # ---------------------------------------------------------------------------
 @checkout_bp.route("/create-order", methods=["POST"])
 @_api_login_required
+@limiter.limit("15 per minute")
 def create_order():
     data = request.get_json(silent=True) or {}
     plan = data.get("plan", "")
@@ -167,8 +173,8 @@ def create_order():
     if plan not in PLAN_PRICES:
         return jsonify({"error": "Invalid plan."}), 400
 
-    # Block re-purchase of same or lower tier
-    if current_user.has_active_plan():
+    # Block re-purchase of same or lower tier (credit packs are always allowed)
+    if plan not in CREDIT_PACKS and current_user.has_active_plan():
         if _PLAN_RANK.get(plan, 0) <= _PLAN_RANK.get(current_user.plan, 0):
             return jsonify({"error": "You already have this tier or higher."}), 400
 
@@ -210,6 +216,7 @@ def create_order():
 # ---------------------------------------------------------------------------
 @checkout_bp.route("/capture-order", methods=["POST"])
 @_api_login_required
+@limiter.limit("15 per minute")
 def capture_order():
     data             = request.get_json(silent=True) or {}
     paypal_order_id  = data.get("order_id", "").strip()
@@ -274,6 +281,7 @@ def capture_order():
 # POST /checkout/webhook  — PayPal event webhook (no session auth)
 # ---------------------------------------------------------------------------
 @checkout_bp.route("/webhook", methods=["POST"])
+@csrf.exempt
 def webhook():
     # Read raw body BEFORE any JSON parsing (needed for signature verification)
     raw_body = request.get_data()
