@@ -688,8 +688,8 @@ pre {
   .whatif-grid   { grid-template-columns: 1fr; }
   .picker-grid   { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 740px) {
-  .app-layout    { padding: 16px; gap: 16px; }
+@media (max-width: 820px) {
+  .app-layout    { padding: 16px 12px; gap: 14px; }
   .glass-panel   { padding: 18px; }
   .grid-2        { grid-template-columns: 1fr; }
   .stats-grid    { grid-template-columns: 1fr 1fr; }
@@ -700,6 +700,9 @@ pre {
 
 /* ── Mobile-first improvements (≤ 640px) ─────────────────────── */
 @media (max-width: 640px) {
+  /* Ensure engine page never overflows horizontally */
+  .app-layout { padding: 12px 10px; gap: 12px; max-width: 100%; }
+
   /* Game state bar: stack hero hand and board vertically */
   .game-state-bar {
     flex-direction: column;
