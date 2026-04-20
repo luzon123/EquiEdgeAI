@@ -34,7 +34,7 @@
 
 /* ── Base reset (only for pages NOT loading styles.css) ─────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -42,6 +42,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -968,11 +969,149 @@ tbody tr:hover td { background: rgba(50,179,255,.04); }
 .upgrade-notice-desc { font-size: 0.84rem; color: var(--text-2); }
 .upgrade-notice a { color: var(--accent); text-decoration: none; font-weight: 600; }
 
+/* ── Hamburger button (hidden on desktop) ───────────────────── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: border-color .15s;
+}
+.nav-hamburger:hover { border-color: var(--glass-h); }
+.hb-line {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--text-2);
+  border-radius: 2px;
+  transition: transform .25s, opacity .25s;
+}
+.nav-hamburger.open .hb-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open .hb-line:nth-child(2) { opacity: 0; }
+.nav-hamburger.open .hb-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Mobile dropdown menu ───────────────────────────────────── */
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: rgba(6, 16, 30, 0.98);
+  border-top: 1px solid var(--glass-border);
+  padding: 10px 14px 18px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  width: 100%;
+}
+.mobile-menu.open { display: flex; }
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mobile-menu-links a {
+  padding: 11px 14px;
+  border-radius: 9px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 0.97rem;
+  font-weight: 500;
+  transition: background .15s, color .15s;
+}
+.mobile-menu-links a:hover,
+.mobile-menu-links a.active { background: var(--accent-dim); color: var(--text); }
+.mobile-menu-links .mm-engine-btn {
+  background: var(--accent);
+  color: #06101e;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.mobile-menu-links .mm-engine-btn:hover { background: #55c8ff; color: #06101e; }
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 10px 0;
+}
+
+.mobile-menu-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mobile-menu-username {
+  font-size: 0.88rem;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.mobile-menu-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 14px 8px;
+}
+.mobile-menu-auth {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0 0;
+}
+.mobile-menu-auth a {
+  flex: 1;
+  text-align: center;
+  padding: 11px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .2s;
+}
+.mobile-menu-auth .mm-login {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--glass-border);
+}
+.mobile-menu-auth .mm-login:hover { border-color: var(--glass-h); color: var(--text); }
+.mobile-menu-auth .mm-register {
+  background: var(--accent);
+  color: #06101e;
+  border: 1px solid transparent;
+}
+.mobile-menu-auth .mm-register:hover { background: #55c8ff; }
+
 /* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .site-nav .nav-inner { gap: 12px; padding: 0 14px; }
+  /* Hide bulky nav-user items, keep only action buttons */
+  .nav-user .plan-badge,
+  .nav-user .credits-chip,
+  .nav-user .nav-plan-status,
+  .nav-user .nav-engine-status,
+  .nav-user .nav-username,
+  .nav-user .nav-admin-link { display: none; }
+}
+
 @media (max-width: 640px) {
-  .site-nav .nav-inner { gap: 16px; padding: 0 14px; }
+  /* Show hamburger, hide desktop nav-links */
+  .nav-hamburger { display: flex; }
   .nav-links { display: none; }
+  /* Hide ALL nav-user content — moved into mobile menu */
+  .nav-user { display: none; }
   .admin-main { padding: 20px 16px; }
   .admin-sidebar { display: none; }
   .pricing-grid { grid-template-columns: 1fr; }
+  /* Ensure content pages don't overflow */
+  .content-page { padding: 40px 16px 60px; }
+  .contact-form { padding: 20px 16px; }
+  .auth-card { padding: 28px 18px; }
 }

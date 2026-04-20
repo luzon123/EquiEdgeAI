@@ -46,7 +46,7 @@
 
 /* ── Reset ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -54,6 +54,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 /* ── Animated background ────────────────────────────────────── */
