@@ -1111,24 +1111,43 @@ tbody tr:hover td { background: rgba(50,179,255,.04); }
   .site-nav .nav-inner { gap: 10px; padding: 0 16px; }
 }
 
-/* ── Medium screens (≤ 820px) — show hamburger ─────────────── */
-/* 820px catches all phones (portrait & landscape) and most tablets */
+/* ── Medium screens (≤ 820px) — hamburger + layout fixes ───── */
 @media (max-width: 820px) {
-  /* Push hamburger into view */
-  .nav-hamburger { display: flex !important; }
+  /* Show hamburger, push it to the FAR RIGHT */
+  .nav-hamburger { display: flex !important; margin-left: auto; }
 
-  /* Collapse desktop nav and user area into mobile menu */
+  /* Collapse desktop nav and user area into the mobile menu */
   .nav-links { display: none !important; }
   .nav-user  { display: none !important; }
-}
 
-/* ── Small phone (≤ 640px) — tighter spacing ──────────────── */
-@media (max-width: 640px) {
-  .site-nav .nav-inner { padding: 0 12px; gap: 8px; }
+  /* ── Page wrapper: guarantee full width, no stray overflow ── */
+  .page-wrap { width: 100%; max-width: 100%; }
+
+  /* ── Marketing sections: tighten top/bottom on tablet ─────── */
+  .hero-section    { padding: 60px 20px 50px; }
+  .cta-section     { padding: 50px 20px 60px; }
+  .features-section { padding: 16px 20px 60px; }
+  .steps-section   { padding: 0 20px 60px; }
+  .pricing-section { padding: 40px 20px 60px; }
+
+  /* ── Force single-column grids ─────────────────────────────── */
+  /* Prevents minmax min-widths from overflowing the viewport    */
+  .features-grid { grid-template-columns: 1fr; }
+  .steps-grid    { grid-template-columns: 1fr; }
+  .pricing-grid  { grid-template-columns: 1fr !important; }
+
+  /* ── Admin table: readable on phone ────────────────────────── */
   .admin-main    { padding: 20px 16px; }
   .admin-sidebar { display: none; }
-  .pricing-grid  { grid-template-columns: 1fr; }
+}
+
+/* ── Small phone (≤ 640px) — tight spacing ────────────────── */
+@media (max-width: 640px) {
+  .site-nav .nav-inner { padding: 0 12px; gap: 8px; }
   .content-page  { padding: 40px 16px 60px; }
   .contact-form  { padding: 20px 16px; }
   .auth-card     { padding: 28px 18px; }
+  /* Reduce hero vertical spacing further on small phones */
+  .hero-section  { padding: 48px 16px 40px; }
+  .cta-section   { padding: 40px 16px 50px; }
 }
