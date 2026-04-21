@@ -2,7 +2,7 @@
 {% block title %}Engine{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=3" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=4" />
 <style>
 /* ── Mode toggle bar ──────────────────────────────────────── */
 .mode-toggle-bar {
@@ -247,7 +247,8 @@
   border-color: rgba(50, 179, 255, 0.48);
   box-shadow: 0 0 14px rgba(50, 179, 255, 0.14);
 }
-@media (max-width: 640px) {
+@media (max-width: 820px) {
+  /* Stack card selectors vertically on all phones (was 640px — too late) */
   .card-sel-area { flex-direction: column; gap: 14px; padding: 14px 16px; }
   .card-sel-group { width: 100%; }
 }
@@ -276,10 +277,39 @@
   font-size: 11px;
   min-width: 70px;
 }
-@media (max-width: 640px) {
-  .gsb-rec-seg { width: 100%; }
-  .gsb-rec-body { min-height: auto; }
-  .gsb-rec-seg .hero-text { font-size: 18px; max-width: none; }
+@media (max-width: 820px) {
+  /*
+   * ROOT CAUSE FIX:
+   * The inline <style> has higher CSS cascade priority than styles.css.
+   * styles.css @media 820px tries to override .game-state-bar gap/padding/min-height
+   * but the inline base rules silently win. We must declare the overrides HERE
+   * (inside the inline style) to ensure they actually apply on mobile.
+   */
+  .game-state-bar {
+    gap: 12px;
+    padding: 14px 16px;
+    min-height: auto;
+  }
+  /*
+   * flex-shrink: 0 means segments never shrink below content width.
+   * Without an explicit width, Hero Hand (~120px) sits alone in a ~355px row,
+   * making the layout look left-shifted. Setting width: 100% forces each
+   * segment to fill its row — creating a clean, balanced vertical stack.
+   */
+  .gsb-segment {
+    width: 100%;
+    flex-shrink: 1;
+  }
+  .gsb-cards     { min-height: auto; }
+  .gsb-rec-seg   { width: 100%; flex-shrink: 1; }
+  .gsb-rec-body  { min-height: auto; }
+  .gsb-rec-seg .hero-text {
+    font-size: 18px;
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 }
 
 /* ── Fast sizing badge ────────────────────────────────────── */
