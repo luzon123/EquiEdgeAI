@@ -248,9 +248,11 @@
   box-shadow: 0 0 14px rgba(50, 179, 255, 0.14);
 }
 @media (max-width: 820px) {
-  /* Stack card selectors vertically on all phones (was 640px — too late) */
-  .card-sel-area { flex-direction: column; gap: 14px; padding: 14px 16px; }
-  .card-sel-group { width: 100%; }
+  /* Stack card selectors vertically on phones */
+  .card-sel-area  { flex-direction: column; gap: 12px; padding: 12px 14px; }
+  .card-sel-group { width: 100%; min-width: 0; }
+  /* Prevent "Select Hero Hand" / "Select Board" buttons from overflowing */
+  .btn-sel-cards  { white-space: normal; font-size: 12px; padding: 11px 12px; }
 }
 
 /* ── Recommended Action HUD (inside game-state-bar) ──────── */
