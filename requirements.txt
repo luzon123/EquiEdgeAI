@@ -4,6 +4,13 @@ flask-sqlalchemy>=3.0.0
 flask-login>=0.6.0
 werkzeug>=2.3.0
 
+# Security
+flask-wtf>=1.2.0
+flask-limiter>=3.5.0
+
+# Email
+flask-mail>=0.9.1
+
 # Poker engine
 treys>=0.1.0
 

@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}Decision Weapon{% endblock %} — Poker AI Engine</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <meta name="description" content="{% block meta_description %}EquiEdge AI — Poker decision engine using Monte Carlo simulation and EV calculations for Texas Hold\'em players.{% endblock %}" />
+  <meta property="og:title" content="{% block og_title %}EquiEdge AI — Poker AI Engine{% endblock %}" />
+  <meta property="og:description" content="Make statistically optimal poker decisions with Monte Carlo simulation, EV calculations, and AI coaching." />
+  <meta property="og:type" content="website" />
+  <title>{% block title %}EquiEdge AI{% endblock %} — Poker AI Engine</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}?v=3" />
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -20,7 +25,7 @@
     <a href="{{ url_for('pages.home') }}" class="nav-brand">
       <span class="nav-brand-icon">♠</span>
       <span class="nav-brand-text">
-        Decision Weapon
+        EquiEdge AI
         <span class="nav-brand-sub">Poker Engine v2 · AI Coach Mode</span>
       </span>
     </a>
@@ -103,58 +108,72 @@
     </div>
 
     <!-- Hamburger (mobile only) -->
-    <button class="nav-hamburger" id="navHamburger"
-            aria-label="Open menu" aria-expanded="false"
-            onclick="toggleMobileNav()">
-      <span></span><span></span><span></span>
+    <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
+      <span class="hb-line"></span>
+      <span class="hb-line"></span>
+      <span class="hb-line"></span>
     </button>
 
   </div>
 
-  <!-- Mobile nav drawer (slides open below the nav bar) -->
-  <div class="mobile-nav" id="mobileNav">
-    <a href="{{ url_for('pages.home') }}"
-       class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a>
+  <!-- ── Mobile dropdown menu ──────────────────────────────── -->
+  <div class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu-links">
+      <a href="{{ url_for('pages.home') }}"
+         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a>
+
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('pages.app_page') }}"
+         class="mm-engine-btn {% if request.endpoint == 'pages.app_page' %}active{% endif %}">
+        ⚡ Engine
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('pages.pricing') }}"
+         class="{% if request.endpoint == 'pages.pricing' %}active{% endif %}">Pricing</a>
+      <a href="{{ url_for('pages.contact') }}"
+         class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a>
+
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('pages.settings') }}"
+         class="{% if request.endpoint == 'pages.settings' %}active{% endif %}">Settings</a>
+      {% endif %}
+    </div>
+
+    <div class="mobile-menu-divider"></div>
 
     {% if current_user.is_authenticated %}
-    <a href="{{ url_for('pages.app_page') }}"
-       class="mobile-nav-engine {% if request.endpoint == 'pages.app_page' %}active{% endif %}">
-      ⚡ Engine
-    </a>
-    {% endif %}
-
-    <a href="{{ url_for('pages.pricing') }}"
-       class="{% if request.endpoint == 'pages.pricing' %}active{% endif %}">Pricing</a>
-    <a href="{{ url_for('pages.contact') }}"
-       class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a>
-
-    {% if current_user.is_authenticated %}
-    <a href="{{ url_for('pages.settings') }}"
-       class="{% if request.endpoint == 'pages.settings' %}active{% endif %}">Settings</a>
-    <div class="mobile-nav-sep"></div>
-    <a href="{{ url_for('auth.logout') }}">Logout</a>
+      <div class="mobile-menu-badges">
+        {% set tier = current_user.get_plan_tier() %}
+        {% if tier == 'pro' %}
+          <span class="plan-badge plan-pro">Pro</span>
+        {% elif tier == 'beginner' %}
+          <span class="plan-badge plan-beginner">Beginner</span>
+        {% elif tier == 'credits' %}
+          <span class="plan-badge plan-credits">Credits</span>
+        {% else %}
+          <span class="plan-badge plan-none">Free</span>
+        {% endif %}
+        {% if not current_user.has_active_plan() and current_user.credits > 0 %}
+          <span class="credits-chip"><b>{{ current_user.credits }}</b> cr</span>
+        {% endif %}
+      </div>
+      <div class="mobile-menu-user">
+        <span class="mobile-menu-username">{{ current_user.username }}</span>
+        {% if current_user.is_admin %}
+          <a href="{{ url_for('admin.dashboard') }}" class="nav-admin-link">Admin</a>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}" class="btn-nav btn-nav-ghost">Logout</a>
+      </div>
     {% else %}
-    <div class="mobile-nav-sep"></div>
-    <a href="{{ url_for('auth.login') }}">Login</a>
-    <a href="{{ url_for('auth.register') }}">Get Started</a>
+      <div class="mobile-menu-auth">
+        <a href="{{ url_for('auth.login') }}"    class="mm-login">Login</a>
+        <a href="{{ url_for('auth.register') }}" class="mm-register">Get Started</a>
+      </div>
     {% endif %}
   </div>
 
 </nav>
-
-<script>
-function toggleMobileNav() {
-  var btn = document.getElementById('navHamburger');
-  var nav = document.getElementById('mobileNav');
-  var open = nav.classList.toggle('open');
-  btn.classList.toggle('open', open);
-  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
-// Close mobile nav when a link inside it is clicked
-document.getElementById('mobileNav').addEventListener('click', function(e) {
-  if (e.target.tagName === 'A') toggleMobileNav();
-});
-</script>
 {% endblock navbar %}
 
 <!-- ── Flash messages ─────────────────────────────────────────── -->
@@ -177,7 +196,7 @@ document.getElementById('mobileNav').addEventListener('click', function(e) {
 {% block footer %}
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-brand">♠ Decision Weapon</div>
+    <div class="footer-brand">♠ EquiEdge AI</div>
     <div class="footer-links">
       <a href="{{ url_for('pages.pricing') }}">Pricing</a>
       <a href="{{ url_for('pages.contact') }}">Contact</a>
@@ -186,12 +205,33 @@ document.getElementById('mobileNav').addEventListener('click', function(e) {
       <a href="{{ url_for('pages.legal') }}">Legal</a>
     </div>
     <div class="footer-copy">
-      &copy; 2026 Decision Weapon. For scenario analysis only — not a substitute for
+      &copy; 2026 EquiEdge AI. For scenario analysis only — not a substitute for
       real-time table judgment, bankroll discipline, or professional advice.
     </div>
   </div>
 </footer>
 {% endblock footer %}
 
+<script>
+  (function () {
+    var btn  = document.getElementById('navHamburger');
+    var menu = document.getElementById('mobileMenu');
+    if (btn && menu) {
+      btn.addEventListener('click', function () {
+        var open = menu.classList.toggle('open');
+        btn.classList.toggle('open', open);
+        btn.setAttribute('aria-expanded', open);
+      });
+      // Close menu when a link inside it is clicked
+      menu.addEventListener('click', function (e) {
+        if (e.target.tagName === 'A') {
+          menu.classList.remove('open');
+          btn.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  })();
+</script>
 </body>
 </html>

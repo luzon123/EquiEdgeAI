@@ -11,6 +11,8 @@ from functools import wraps
 from flask import Blueprint, jsonify, request
 from flask_login import current_user
 
+from extensions import limiter
+
 from config import (
     DEFAULT_SIMULATIONS, MIN_SIMULATIONS, MAX_SIMULATIONS, QUICK_SIMULATIONS,
     FAST_SIMULATIONS,
@@ -64,6 +66,7 @@ def api_login_required(f):
 # ---------------------------------------------------------------------------
 @api_bp.route("/decision", methods=["POST"])
 @api_login_required
+@limiter.limit("60 per minute")
 def decision_endpoint():
     # ── Access check ──────────────────────────────────────────────────────
     has_access, reason = check_access(current_user)

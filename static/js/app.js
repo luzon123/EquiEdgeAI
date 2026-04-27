@@ -1,5 +1,5 @@
 /* ============================================================
-   POKER DECISION WEAPON — Frontend Logic
+   EQUIEDGE AI — Frontend Logic
    ============================================================ */
 
 'use strict';
@@ -415,10 +415,15 @@ async function sendDecision() {
 
   const payload = APP_MODE === 'fast' ? buildFastPayload(hand, board) : buildFullPayload(hand, board);
 
+  function _getCsrfToken() {
+    const el = document.querySelector('meta[name="csrf-token"]');
+    return el ? el.getAttribute('content') : '';
+  }
+
   try {
     const res  = await fetch('/decision', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCsrfToken() },
       body:    JSON.stringify(payload),
     });
     const json = await res.json();

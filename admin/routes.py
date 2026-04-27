@@ -38,7 +38,7 @@ def dashboard():
     active_users    = User.query.filter_by(is_active=True).count()
     pro_users       = User.query.filter_by(plan="pro",      plan_active=True).count()
     beginner_users  = User.query.filter_by(plan="beginner", plan_active=True).count()
-    # plan_active=True means a one-time purchase was granted (lifetime access)
+    # plan_active=True means a one-time purchase was granted
     total_decisions = db.session.query(
         db.func.sum(User.total_decisions)
     ).scalar() or 0
@@ -97,7 +97,7 @@ def user_detail(user_id):
                 if new_plan == "none":
                     flash("Purchase tier removed.", "success")
                 else:
-                    flash(f"'{new_plan.capitalize()}' tier granted (lifetime access).", "success")
+                    flash(f"'{new_plan.capitalize()}' tier granted.", "success")
             else:
                 flash("Invalid tier.", "error")
 

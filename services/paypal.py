@@ -26,13 +26,20 @@ logger = get_logger()
 # Server-side plan registry — single source of truth for prices
 # ---------------------------------------------------------------------------
 PLAN_PRICES: dict[str, str] = {
-    "beginner": "99.90",
-    "pro":      "149.90",
+    "beginner":   "99.90",
+    "pro":        "149.90",
+    "credits15":  "10.00",
 }
 
 PLAN_LABELS: dict[str, str] = {
-    "beginner": "Decision Weapon — Beginner (Lifetime Access)",
-    "pro":      "Decision Weapon — Pro (Lifetime Access)",
+    "beginner":  "EquiEdge AI — Beginner",
+    "pro":       "EquiEdge AI — Pro",
+    "credits15": "EquiEdge AI — 15 Decision Credits",
+}
+
+# Credit packs: plan key → number of credits to add
+CREDIT_PACKS: dict[str, int] = {
+    "credits15": 15,
 }
 
 

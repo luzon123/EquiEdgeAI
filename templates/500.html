@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Server Error{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+            min-height:60vh;text-align:center;padding:40px 20px;">
+  <div style="font-size:5rem;font-weight:900;color:#e74c3c;line-height:1;">500</div>
+  <h1 style="font-size:1.6rem;font-weight:800;margin:16px 0 10px;">Something Went Wrong</h1>
+  <p style="color:var(--muted);max-width:380px;line-height:1.6;">
+    An unexpected error occurred. Please try again. If the problem persists,
+    contact <a href="mailto:support@equiedgeai.io" style="color:var(--accent);">support@equiedgeai.io</a>.
+  </p>
+  <div style="margin-top:28px;">
+    <a href="{{ url_for('pages.home') }}" class="btn-primary">Go Home</a>
+  </div>
+</div>
+{% endblock %}

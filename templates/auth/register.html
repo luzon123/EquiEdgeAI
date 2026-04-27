@@ -9,6 +9,7 @@
     <div class="auth-sub">Get 5 free credits to try the engine — no payment required</div>
 
     <form method="POST" action="{{ url_for('auth.register') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
       <div class="form-group">
         <label>Username</label>
