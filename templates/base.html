@@ -102,8 +102,59 @@
       {% endif %}
     </div>
 
+    <!-- Hamburger (mobile only) -->
+    <button class="nav-hamburger" id="navHamburger"
+            aria-label="Open menu" aria-expanded="false"
+            onclick="toggleMobileNav()">
+      <span></span><span></span><span></span>
+    </button>
+
   </div>
+
+  <!-- Mobile nav drawer (slides open below the nav bar) -->
+  <div class="mobile-nav" id="mobileNav">
+    <a href="{{ url_for('pages.home') }}"
+       class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a>
+
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('pages.app_page') }}"
+       class="mobile-nav-engine {% if request.endpoint == 'pages.app_page' %}active{% endif %}">
+      ⚡ Engine
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('pages.pricing') }}"
+       class="{% if request.endpoint == 'pages.pricing' %}active{% endif %}">Pricing</a>
+    <a href="{{ url_for('pages.contact') }}"
+       class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a>
+
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('pages.settings') }}"
+       class="{% if request.endpoint == 'pages.settings' %}active{% endif %}">Settings</a>
+    <div class="mobile-nav-sep"></div>
+    <a href="{{ url_for('auth.logout') }}">Logout</a>
+    {% else %}
+    <div class="mobile-nav-sep"></div>
+    <a href="{{ url_for('auth.login') }}">Login</a>
+    <a href="{{ url_for('auth.register') }}">Get Started</a>
+    {% endif %}
+  </div>
+
 </nav>
+
+<script>
+function toggleMobileNav() {
+  var btn = document.getElementById('navHamburger');
+  var nav = document.getElementById('mobileNav');
+  var open = nav.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+// Close mobile nav when a link inside it is clicked
+document.getElementById('mobileNav').addEventListener('click', function(e) {
+  if (e.target.tagName === 'A') toggleMobileNav();
+});
+</script>
 {% endblock navbar %}
 
 <!-- ── Flash messages ─────────────────────────────────────────── -->

@@ -699,6 +699,9 @@ pre {
 
 /* ── Mobile-first improvements (≤ 640px) ─────────────────────── */
 @media (max-width: 640px) {
+  /* App layout: prevent any horizontal overflow */
+  .app-layout { overflow-x: hidden; }
+
   /* Game state bar: stack hero hand and board vertically */
   .game-state-bar {
     flex-direction: column;
@@ -710,13 +713,43 @@ pre {
   .gsb-sep    { width: 100%; height: 1px; flex-shrink: 0; }
   .gsb-texture { margin-left: 0; width: 100%; }
 
-  /* Card selection: already column via app.html inline style,
-     ensure dropdown fits without overflow */
+  /* Scale down play cards inside game state bar so 5 board cards
+     don't overflow a 375px screen (58px × 5 + gaps = 318px > ~311px) */
+  .gsb-cards .play-card          { width: 44px; height: 62px; padding: 5px; border-radius: 9px; }
+  .gsb-cards .play-card .c-top  { font-size: 13px; }
+  .gsb-cards .play-card .c-bot  { font-size: 15px; }
+  .gsb-cards .play-card.small   { width: 38px; height: 54px; padding: 4px; }
+  .gsb-slot-empty               { width: 32px; height: 48px; }
+  .gsb-cards                    { gap: 5px; }
+
+  /* Card-sel area divider: becomes a horizontal rule in column layout */
+  .csa-div { width: 100%; height: 1px; margin: 2px 0; align-self: auto; }
+
+  /* Card selection: ensure dropdown fits without overflow */
   .card-dropdown { max-height: 70vh; }
 
   /* Inline card picker: larger tap targets */
   .cdd-card { padding: 9px 5px; font-size: 14px; min-height: 44px; }
   .cdd-grid { gap: 10px; }
+
+  /* Card picker modal: bottom-sheet style on mobile */
+  .picker-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .picker-modal {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 16px 14px;
+  }
+  .picker-head {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .picker-toolbar { width: 100%; justify-content: flex-end; gap: 6px; }
+  .picker-title   { font-size: 17px; }
 
   /* Get Decision button: full-width, taller, easy to reach */
   .btn-get-decision {
@@ -728,6 +761,10 @@ pre {
 
   /* Facing action grid: 2 columns on very small screens */
   .facing-action-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Stats: slightly smaller value text in 2-col grid */
+  .stat-value  { font-size: 22px; }
+  .stat-card   { padding: 12px; min-height: 76px; }
 }
 
 /* ── Card clear button (used in card-sel-area) ───────────────── */

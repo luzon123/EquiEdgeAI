@@ -968,11 +968,79 @@ tbody tr:hover td { background: rgba(50,179,255,.04); }
 .upgrade-notice-desc { font-size: 0.84rem; color: var(--text-2); }
 .upgrade-notice a { color: var(--accent); text-decoration: none; font-weight: 600; }
 
+/* ── Hamburger button (mobile only) ────────────────────────── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 9px 7px;
+  border-radius: 8px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.nav-hamburger:hover { background: var(--accent-dim); }
+.nav-hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text-2);
+  border-radius: 2px;
+  transition: transform 0.22s, opacity 0.22s;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Mobile nav drawer ──────────────────────────────────────── */
+.mobile-nav {
+  display: none;
+  flex-direction: column;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--glass-border);
+  background: rgba(6, 14, 28, 0.98);
+  gap: 3px;
+}
+.mobile-nav.open { display: flex; }
+.mobile-nav a {
+  display: block;
+  padding: 13px 14px;
+  border-radius: 10px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+.mobile-nav a:hover,
+.mobile-nav a.active { background: var(--accent-dim); color: var(--text); }
+.mobile-nav .mobile-nav-engine {
+  background: rgba(50, 179, 255, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(50, 179, 255, 0.22);
+}
+.mobile-nav-sep {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 6px 0;
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .site-nav .nav-inner { gap: 16px; padding: 0 14px; }
-  .nav-links { display: none; }
-  .admin-main { padding: 20px 16px; }
-  .admin-sidebar { display: none; }
-  .pricing-grid { grid-template-columns: 1fr; }
+  .site-nav .nav-inner  { gap: 10px; padding: 0 14px; }
+  .nav-links            { display: none; }
+  .nav-hamburger        { display: flex; }
+
+  /* Trim the user area down to essentials on narrow screens */
+  .nav-username         { display: none; }
+  .nav-plan-status      { display: none; }
+  .nav-engine-status    { display: none; }
+
+  .admin-main           { padding: 20px 16px; }
+  .admin-sidebar        { display: none; }
+  .pricing-grid         { grid-template-columns: 1fr; }
 }
