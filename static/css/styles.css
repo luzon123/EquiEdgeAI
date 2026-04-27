@@ -688,12 +688,11 @@ pre {
   .whatif-grid   { grid-template-columns: 1fr; }
   .picker-grid   { grid-template-columns: 1fr 1fr; }
 
-  /* ── Mobile reading order: Hand Setup → Get Decision → Results ── */
-  /* On desktop the Get Decision button sits above the two side-by-  */
-  /* side panels, which is fine. In single-column it appears before  */
-  /* the form, forcing users to scroll up to press it after editing. */
-  .form-panel          { order: 3; }
-  .primary-action-area { order: 4; }
+  /* ── Mobile reading order: Get Decision first, then everything else ── */
+  .primary-action-area { order: 1; border-top: none; padding: 12px 0; margin-top: 0; }
+  .game-state-bar      { order: 2; }
+  .card-sel-area       { order: 3; }
+  .form-panel          { order: 4; }
   .results-panel       { order: 5; }
 }
 @media (max-width: 820px) {
@@ -762,15 +761,11 @@ pre {
   .gsb-sep     { display: none; }
   .gsb-texture { margin-left: 0; width: 100%; }
 
-  /* ── PLAY CARDS: scale down so 5 board cards fit on 320px ───── */
-  /* 5 × 58px + 4 × 7px gap = 318px, overflows 320px–375px phones. */
-  /* 5 × 42px + 4 × 4px gap = 226px — fits even on 320px screens. */
-  .gsb-cards .play-card         { width: 42px; height: 60px; padding: 4px 3px; border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,.22); }
-  .gsb-cards .play-card .c-top { font-size: 12px; }
-  .gsb-cards .play-card .c-bot { font-size: 13px; }
-  .gsb-cards .play-card.small  { width: 36px; height: 52px; }
-  .gsb-slot-empty              { width: 30px; height: 44px; }
-  .gsb-cards                   { gap: 4px; min-height: auto; }
+  /* ── GAME STATE BAR CARDS ───────────────────────────────────── */
+  /* Cards keep their full size; if they overflow the bar width    */
+  /* (e.g. 5 board cards on a 320px phone), the row scrolls       */
+  /* horizontally inside the bar — no page-level overflow.         */
+  .gsb-cards { min-height: auto; overflow-x: auto; }
 
   /* ── CARD-SEL AREA ──────────────────────────────────────────── */
   .csa-div       { display: none; }

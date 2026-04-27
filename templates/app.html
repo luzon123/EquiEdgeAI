@@ -2,7 +2,7 @@
 {% block title %}Engine{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=5" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=6" />
 <style>
 /* ── Mode toggle bar ──────────────────────────────────────── */
 .mode-toggle-bar {
@@ -253,6 +253,9 @@
   .card-sel-group { width: 100%; min-width: 0; }
   /* Prevent "Select Hero Hand" / "Select Board" buttons from overflowing */
   .btn-sel-cards  { white-space: normal; font-size: 12px; padding: 11px 12px; }
+  /* facing-action-grid is defined here (inline style beats styles.css),
+     so the 820px collapse to 2-col MUST also live here to take effect */
+  .facing-action-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* ── Recommended Action HUD (inside game-state-bar) ──────── */
