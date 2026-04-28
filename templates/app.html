@@ -290,22 +290,29 @@
    * but the inline base rules silently win. We must declare the overrides HERE
    * (inside the inline style) to ensure they actually apply on mobile.
    */
+  /* Stack everything vertically on all phones — the inline style takes    */
+  /* priority over styles.css, so flex-direction must live here too.       */
+  /* flex-wrap: nowrap overrides styles.css 820px which sets flex-wrap:    */
+  /* wrap — combining wrap + column produces a multi-column layout.        */
   .game-state-bar {
-    gap: 12px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 10px;
     padding: 14px 16px;
     min-height: auto;
   }
-  /*
-   * flex-shrink: 0 means segments never shrink below content width.
-   * Without an explicit width, Hero Hand (~120px) sits alone in a ~355px row,
-   * making the layout look left-shifted. Setting width: 100% forces each
-   * segment to fill its row — creating a clean, balanced vertical stack.
-   */
+  /* Hide vertical separators — they make no sense in a column layout */
+  .gsb-sep { display: none; }
+  /* Each segment fills the full bar width so nothing is left-shifted */
   .gsb-segment {
     width: 100%;
     flex-shrink: 1;
+    min-width: 0;
   }
-  .gsb-cards     { min-height: auto; }
+  /* Cards row: allow horizontal scroll if 5 board cards exceed phone width */
+  .gsb-cards     { min-height: auto; overflow-x: auto; }
+  .gsb-texture   { margin-left: 0; width: 100%; }
   .gsb-rec-seg   { width: 100%; flex-shrink: 1; }
   .gsb-rec-body  { min-height: auto; }
   .gsb-rec-seg .hero-text {
