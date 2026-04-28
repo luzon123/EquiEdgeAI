@@ -2,6 +2,10 @@
 {% block title %}Pricing{% endblock %}
 
 {% block content %}
+<!-- TEST MODE BANNER — remove before production -->
+<div class="test-mode-banner">
+  ⚠ TEST MODE &mdash; All prices temporarily set to $1 for testing. Do not use real cards.
+</div>
 <section class="pricing-section">
   <div class="section-label">One-Time Purchase</div>
   <h1 class="section-heading">Pay Once. Get Full Access.</h1>
@@ -17,8 +21,8 @@
     <div class="pricing-card">
       <div class="pricing-plan">Beginner</div>
       <div class="pricing-price-block">
-        <span class="pricing-price-old">$129.90</span>
-        <span class="pricing-price-current">$99.90</span>
+        <span class="pricing-price-old">$99.90</span>
+        <span class="pricing-price-current">$1.00</span>
       </div>
       <div class="pricing-lifetime-badge">One-time purchase · No subscription · No renewal</div>
       <div class="pricing-tagline">Core engine access for improving players</div>
@@ -53,8 +57,8 @@
       <div class="pricing-featured-badge">Best Value</div>
       <div class="pricing-plan">Pro</div>
       <div class="pricing-price-block">
-        <span class="pricing-price-old">$199.90</span>
-        <span class="pricing-price-current">$149.90</span>
+        <span class="pricing-price-old">$149.90</span>
+        <span class="pricing-price-current">$1.00</span>
       </div>
       <div class="pricing-lifetime-badge">One-time purchase · No subscription · No renewal</div>
       <div class="pricing-tagline">Full engine access for serious players</div>
@@ -107,8 +111,8 @@
     </div>
     <div class="credit-pack-right">
       <div class="credit-pack-amount">15 decisions</div>
-      <div class="credit-pack-price">$10</div>
-      <div class="credit-pack-note">$0.67 per decision</div>
+      <div class="credit-pack-price">$1.00</div>
+      <div class="credit-pack-note">$0.07 per decision</div>
       <a href="{{ url_for('checkout.checkout_page', plan='credits15') }}" class="pricing-cta primary" style="margin-top:14px;display:block;text-align:center;">
         Purchase Credits
       </a>

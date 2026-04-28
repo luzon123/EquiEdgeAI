@@ -568,6 +568,20 @@ body::before {
 .cta-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; margin-bottom: 14px; }
 .cta-desc  { color: var(--text-2); font-size: 1rem; max-width: 480px; margin: 0 auto 30px; }
 
+/* ── TEST MODE banner ── remove before production ──────────── */
+.test-mode-banner {
+  background: #f59e0b;
+  color: #1a1a1a;
+  text-align: center;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
 /* ── Pricing page ───────────────────────────────────────────── */
 .pricing-section {
   max-width: 900px;
