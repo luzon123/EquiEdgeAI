@@ -2,7 +2,7 @@
 {% block title %}Engine{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=6" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=7" />
 <style>
 /* ── Mode toggle bar ──────────────────────────────────────── */
 .mode-toggle-bar {
@@ -248,14 +248,16 @@
   box-shadow: 0 0 14px rgba(50, 179, 255, 0.14);
 }
 @media (max-width: 820px) {
-  /* Stack card selectors vertically on phones */
-  .card-sel-area  { flex-direction: column; gap: 12px; padding: 12px 14px; }
-  .card-sel-group { width: 100%; min-width: 0; }
-  /* Prevent "Select Hero Hand" / "Select Board" buttons from overflowing */
-  .btn-sel-cards  { white-space: normal; font-size: 12px; padding: 11px 12px; }
-  /* facing-action-grid is defined here (inline style beats styles.css),
-     so the 820px collapse to 2-col MUST also live here to take effect */
-  .facing-action-grid { grid-template-columns: 1fr 1fr; }
+  /* Card selection area: stack vertically, never exceed viewport */
+  .card-sel-area  { flex-direction: column; gap: 12px; padding: 12px 14px; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+  .card-sel-group { width: 100%; max-width: 100%; min-width: 0; }
+  .card-sel-controls { flex-wrap: wrap; }
+  /* Select-cards button: allow text to wrap, never push container wider */
+  .btn-sel-cards  { white-space: normal; font-size: 12px; padding: 11px 12px; min-width: 0; max-width: 100%; }
+  /* facing-action-grid is defined in this inline block, so the 820px
+     collapse MUST also be declared here — styles.css loses the cascade */
+  .facing-action-grid { grid-template-columns: 1fr 1fr; min-width: 0; }
+  .facing-btn { min-width: 0; word-break: break-word; }
 }
 
 /* ── Recommended Action HUD (inside game-state-bar) ──────── */
@@ -290,10 +292,9 @@
    * but the inline base rules silently win. We must declare the overrides HERE
    * (inside the inline style) to ensure they actually apply on mobile.
    */
-  /* Stack everything vertically on all phones — the inline style takes    */
-  /* priority over styles.css, so flex-direction must live here too.       */
-  /* flex-wrap: nowrap overrides styles.css 820px which sets flex-wrap:    */
-  /* wrap — combining wrap + column produces a multi-column layout.        */
+  /* ── Game state bar: column stack, fully contained ──────────── */
+  /* flex-direction, flex-wrap, and max-width MUST be declared in   */
+  /* this inline block — styles.css rules lose the cascade here.    */
   .game-state-bar {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -301,26 +302,40 @@
     gap: 10px;
     padding: 14px 16px;
     min-height: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
-  /* Hide vertical separators — they make no sense in a column layout */
+  /* Hide vertical separators — meaningless in a column stack */
   .gsb-sep { display: none; }
-  /* Each segment fills the full bar width so nothing is left-shifted */
+  /* Each segment: full bar width, shrinkable, no overflow */
   .gsb-segment {
     width: 100%;
-    flex-shrink: 1;
+    max-width: 100%;
     min-width: 0;
+    flex-shrink: 1;
   }
-  /* Cards row: allow horizontal scroll if 5 board cards exceed phone width */
-  .gsb-cards     { min-height: auto; overflow-x: auto; }
-  .gsb-texture   { margin-left: 0; width: 100%; }
-  .gsb-rec-seg   { width: 100%; flex-shrink: 1; }
-  .gsb-rec-body  { min-height: auto; }
+  /* Card row: scroll horizontally within itself rather than   */
+  /* expanding the page — cards keep full size per user request */
+  .gsb-cards {
+    min-height: auto;
+    overflow-x: auto;
+    max-width: 100%;
+    /* Prevent the flex row of cards from pushing gsb-segment wider */
+    display: flex;
+    flex-wrap: nowrap;
+  }
+  .gsb-texture   { margin-left: 0; width: 100%; max-width: 100%; }
+  .gsb-rec-seg   { width: 100%; max-width: 100%; min-width: 0; flex-shrink: 1; }
+  .gsb-rec-body  { min-height: auto; min-width: 0; flex-wrap: wrap; }
   .gsb-rec-seg .hero-text {
     font-size: 18px;
-    max-width: none;
+    max-width: 100%;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
+    min-width: 0;
   }
 }
 

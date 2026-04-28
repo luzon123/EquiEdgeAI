@@ -46,7 +46,14 @@
 
 /* ── Reset ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; overflow-x: hidden; }
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  /* Explicit width stops the html element from ever expanding beyond    */
+  /* the viewport — required because overflow-x:hidden alone does not   */
+  /* prevent iOS Safari from scrolling when content exceeds 100vw.      */
+  width: 100%;
+}
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -55,6 +62,15 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ── Responsive media: never wider than their container ─────── */
+img, video, canvas, svg, iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 /* ── Animated background ────────────────────────────────────── */
@@ -73,13 +89,21 @@ body::before {
 /* ── App layout ─────────────────────────────────────────────── */
 .app-layout {
   position: relative; z-index: 1;
-  max-width: 1480px;
+  /* min() ensures the layout never exceeds the viewport width */
+  width: 100%;
+  max-width: min(1480px, 100%);
   margin: 0 auto;
   padding: 24px 28px 48px;
   display: grid;
   grid-template-columns: 440px 1fr;
   gap: 24px;
+  box-sizing: border-box;
 }
+
+/* Every direct child of the grid is allowed to shrink to 0   */
+/* without min-width: 0 flex/grid children keep their         */
+/* intrinsic min-content width and can silently overflow.     */
+.app-layout > * { min-width: 0; max-width: 100%; }
 
 /* ── Glass Panel ────────────────────────────────────────────── */
 .glass-panel {
@@ -705,13 +729,17 @@ pre {
   /* ROOT CAUSE FIX 1: 14px side padding on a 375px phone = 83%  */
   /* usable width after glass-panel padding. Reducing to 8px    */
   /* gives 88% — much less of the "boxed" feeling.              */
-  .app-layout  { padding: 8px 8px 40px; gap: 12px; width: 100%; }
-  .glass-panel { padding: 16px; }
+  .app-layout  { padding: 8px 8px 40px; gap: 12px; width: 100%; max-width: 100%; }
+  /* min-width: 0 lets glass panels shrink below their content size    */
+  /* without it a panel's min-content width can exceed the viewport.  */
+  .glass-panel { padding: 16px; min-width: 0; max-width: 100%; }
   .grid-2      { grid-template-columns: 1fr; }
   .stats-grid  { grid-template-columns: 1fr 1fr; }
   .hero-text   { font-size: 26px; }
   .picker-grid { grid-template-columns: 1fr; }
   .segment-4   { grid-template-columns: 1fr 1fr; }
+  /* Segment control buttons: allow text to wrap, never overflow */
+  .seg-btn, .facing-btn, .mode-toggle-btn { min-width: 0; word-break: break-word; }
 
   /* ROOT CAUSE FIX 3: 3-col facing-action-grid is cramped on   */
   /* phones between 375-820px — force 2-col here, not at 640px  */
@@ -736,7 +764,13 @@ pre {
 @media (max-width: 640px) {
   /* Gutters: squeeze out every spare pixel on small phones */
   .app-layout  { padding: 6px 6px 40px; gap: 8px; max-width: 100%; width: 100%; }
-  .glass-panel { padding: 14px; }
+  .glass-panel { padding: 14px; min-width: 0; max-width: 100%; }
+  /* All inputs/selects guaranteed full width on small phones */
+  input, select { min-width: 0; max-width: 100%; }
+  /* Segment control and its children: guaranteed to fit */
+  .segment-control { min-width: 0; max-width: 100%; }
+  .legend-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .legend-item { min-width: 0; overflow-wrap: break-word; }
 
   /* ── PRIMARY ACTION AREA ────────────────────────────────────── */
   /* Strip the desktop divider line. After re-ordering, the button */
