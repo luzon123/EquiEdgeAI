@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Engine{% endblock %}
 
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=7" />
 <style>
@@ -379,6 +381,44 @@
   border-color: rgba(34,208,122,.28);
   color: var(--green);
 }
+
+/* ── Upgrade banner (free users) ─────────────────────────────── */
+.upgrade-banner {
+  background: linear-gradient(135deg, rgba(50,179,255,.10), rgba(30,90,170,.12));
+  border: 1px solid rgba(50,179,255,.28);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+}
+.upgrade-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.upgrade-banner-text {
+  font-size: .875rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.upgrade-banner-text strong { color: var(--text); }
+.upgrade-banner-btn {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #000;
+  font-weight: 800;
+  font-size: .82rem;
+  padding: 9px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity .15s;
+}
+.upgrade-banner-btn:hover { opacity: .88; }
+@media (max-width: 640px) {
+  .upgrade-banner-inner { flex-direction: column; align-items: flex-start; }
+  .upgrade-banner-btn   { width: 100%; text-align: center; }
+}
 </style>
 {% endblock %}
 
@@ -392,6 +432,22 @@
 </script>
 
 <div class="app-layout">
+
+  <!-- ──────────────────────────────────────────────────────
+       UPGRADE BANNER — shown only to users without a paid plan
+  ─────────────────────────────────────────────────────── -->
+  {% if user_plan == 'none' %}
+  <div class="upgrade-banner" style="grid-column:1/-1;">
+    <div class="upgrade-banner-inner">
+      <div class="upgrade-banner-text">
+        <strong>You are on the Free plan.</strong>
+        You have <strong>{{ user_credits }}</strong> decision credit{{ 's' if user_credits != 1 else '' }} remaining.
+        Upgrade to unlock unlimited decisions, AI coaching, Full Mode, and more.
+      </div>
+      <a href="{{ url_for('pages.pricing') }}" class="upgrade-banner-btn">View Plans →</a>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- ──────────────────────────────────────────────────────
        GAME STATE BAR — hero hand + board, always visible

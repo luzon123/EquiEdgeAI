@@ -3,6 +3,7 @@ Authentication routes: /login  /register  /logout  /forgot-password  /reset-pass
 """
 from __future__ import annotations
 import re
+from urllib.parse import urlparse, urljoin
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -26,6 +27,13 @@ _USER_RE  = re.compile(r"^[A-Za-z0-9_]+$")
 
 def _valid_email(email: str) -> bool:
     return bool(_EMAIL_RE.match(email))
+
+
+def _is_safe_redirect_url(target: str) -> bool:
+    """Return True only if target stays on the same host (prevents open-redirect)."""
+    ref  = urlparse(request.host_url)
+    test = urlparse(urljoin(request.host_url, target))
+    return test.scheme in ("http", "https") and ref.netloc == test.netloc
 
 
 def _send_reset_email(user: User, token: str) -> None:
@@ -83,7 +91,10 @@ def login():
             return render_template("auth/login.html")
 
         login_user(user, remember=remember)
-        next_page = request.args.get("next") or url_for("pages.app_page")
+        # Validate the next param to prevent open-redirect attacks
+        next_page = request.args.get("next", "")
+        if not next_page or not _is_safe_redirect_url(next_page):
+            next_page = url_for("pages.app_page")
         return redirect(next_page)
 
     return render_template("auth/login.html")

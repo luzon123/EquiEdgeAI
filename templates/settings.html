@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
 
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 <style>
@@ -255,6 +257,23 @@
   .theme-option-grid { grid-template-columns: 1fr 1fr; }
   .settings-wrap { padding: 20px 16px 48px; }
 }
+.btn-delete-account {
+  display: inline-block;
+  background: transparent;
+  border: 1px solid rgba(255,92,114,.45);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background .15s, border-color .15s;
+  cursor: pointer;
+}
+.btn-delete-account:hover {
+  background: rgba(255,92,114,.08);
+  border-color: rgba(255,92,114,.70);
+}
 </style>
 {% endblock %}
 
@@ -430,6 +449,25 @@
         <div class="toggle-thumb"></div>
       </label>
     </div>
+  </div>
+
+  <!-- ── Account / Data ───────────────────────────────────── -->
+  <div class="settings-card" style="border-color:rgba(255,92,114,.22);">
+    <div class="settings-card-title" style="color:var(--red);">Account &amp; Data</div>
+    <div class="settings-card-desc">
+      You have the right to request deletion of your account and all associated data
+      under GDPR, CCPA, and similar regulations. Deletion is permanent and cannot be undone.
+      Your purchase history may be retained for legal and accounting purposes.
+    </div>
+    <a href="{{ url_for('pages.contact') }}?subject=Account+Deletion+Request"
+       class="btn-delete-account">
+      Request Account Deletion
+    </a>
+    <p style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.5;">
+      Clicking this opens the contact form. We will process your request within 30 days
+      and confirm by email. Alternatively, email us directly at
+      <a href="mailto:support@equiedgeai.io" style="color:var(--muted);text-decoration:underline;">support@equiedgeai.io</a>.
+    </p>
   </div>
 
 </div><!-- /settings-wrap -->

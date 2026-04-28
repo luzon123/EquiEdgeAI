@@ -351,4 +351,12 @@ def decision_endpoint():
 # ---------------------------------------------------------------------------
 @api_bp.route("/health", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok"}), 200
+    """Liveness + DB connectivity check used by hosting platforms."""
+    from models import db
+    try:
+        db.session.execute(db.text("SELECT 1"))
+        db.session.commit()
+        return jsonify({"status": "ok"}), 200
+    except Exception as exc:
+        get_logger().error("Health check — DB unreachable: %s", exc)
+        return jsonify({"status": "db_error"}), 503

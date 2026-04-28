@@ -36,6 +36,60 @@ _DEV_SECRET = "dev-secret-key-CHANGE-IN-PRODUCTION"
 
 
 # ---------------------------------------------------------------------------
+# Startup validation
+# ---------------------------------------------------------------------------
+def _validate_env(secret_key: str) -> None:
+    """
+    Fail fast if critical environment variables are missing or unsafe.
+    Called once inside create_app() before any network/DB work starts.
+    """
+    logger = get_logger()
+
+    # SECRET_KEY must not be the dev placeholder in any context
+    if secret_key == _DEV_SECRET:
+        # Warning already emitted by create_app(); allow local dev to continue.
+        logger.warning(
+            "SECURITY: Running with the default dev SECRET_KEY. "
+            "Set SECRET_KEY before accepting real traffic."
+        )
+
+    # PAYPAL_MODE is always required — no silent default in production
+    paypal_mode = os.environ.get("PAYPAL_MODE", "").strip().lower()
+    if not paypal_mode:
+        raise RuntimeError(
+            "PAYPAL_MODE environment variable is not set. "
+            "Set it to 'sandbox' for testing or 'live' for production."
+        )
+    if paypal_mode not in ("sandbox", "live"):
+        raise RuntimeError(
+            f"PAYPAL_MODE must be 'sandbox' or 'live', got {paypal_mode!r}."
+        )
+
+    # PayPal credentials are required regardless of mode
+    if not os.environ.get("PAYPAL_CLIENT_ID"):
+        raise RuntimeError("PAYPAL_CLIENT_ID environment variable is not set.")
+    if not os.environ.get("PAYPAL_CLIENT_SECRET"):
+        raise RuntimeError("PAYPAL_CLIENT_SECRET environment variable is not set.")
+
+    # Webhook ID is mandatory in live mode (signature verification cannot be skipped)
+    if paypal_mode == "live" and not os.environ.get("PAYPAL_WEBHOOK_ID"):
+        raise RuntimeError(
+            "PAYPAL_WEBHOOK_ID is required when PAYPAL_MODE=live. "
+            "Obtain the webhook ID from the PayPal developer dashboard."
+        )
+
+    # Warn (not raise) if mail is unconfigured — email features degrade gracefully
+    if not os.environ.get("MAIL_SERVER"):
+        logger.warning(
+            "MAIL_SERVER is not set — password reset and contact emails will not be sent."
+        )
+    if not os.environ.get("CONTACT_RECIPIENT"):
+        logger.warning(
+            "CONTACT_RECIPIENT is not set — contact form submissions will be dropped."
+        )
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 def create_app() -> Flask:
@@ -69,7 +123,11 @@ def create_app() -> Flask:
     app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@equiedgeai.io")
 
     # ── Flask-WTF CSRF ───────────────────────────────────────────────────
-    app.config["WTF_CSRF_TIME_LIMIT"] = None   # token valid for entire session
+    # 7200 seconds (2 hours) — long enough for a normal session, not forever.
+    app.config["WTF_CSRF_TIME_LIMIT"] = 7200
+
+    # ── Production env-var validation ───────────────────────────────────
+    _validate_env(secret_key)
 
     # ── Extensions ──────────────────────────────────────────────────────
     db.init_app(app)
@@ -142,5 +200,7 @@ def create_app() -> Flask:
 if __name__ == "__main__":
     application = create_app()
     get_logger().info("Starting Poker Decision Engine on http://0.0.0.0:5000")
-    application.run(host="0.0.0.0", port=5000, debug=True)
+    # Debug mode is opt-in via env var — never hardcoded
+    _debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    application.run(host="0.0.0.0", port=5000, debug=_debug)
 

@@ -38,6 +38,100 @@ from utils.logging_setup import get_logger
 checkout_bp = Blueprint("checkout", __name__, url_prefix="/checkout")
 logger = get_logger()
 
+# Human-readable plan names for emails
+_EMAIL_PLAN_LABELS: dict[str, str] = {
+    "beginner":  "Beginner",
+    "pro":       "Pro",
+    "credits15": "15 Decision Credits",
+}
+
+# Feature bullets shown in the confirmation email per plan
+_EMAIL_PLAN_FEATURES: dict[str, str] = {
+    "beginner": (
+        "• Unlimited decisions (Quick Mode)\n"
+        "• Win rate & EV stats\n"
+        "• Board texture analysis\n"
+        "• Key metrics: SPR, pot odds, fold equity"
+    ),
+    "pro": (
+        "• Everything in Beginner, plus:\n"
+        "• Full Mode (5,000 simulations)\n"
+        "• AI reasoning & decision tags\n"
+        "• Opponent exploit profiles\n"
+        "• What-If engine (3 scenarios)\n"
+        "• Decision metrics dashboard"
+    ),
+    "credits15": (
+        "• 15 decisions added to your balance\n"
+        "• Credits use Quick Mode with core engine features\n"
+        "• No expiry — use any time"
+    ),
+}
+
+
+def _send_purchase_confirmation(
+    user: "User",
+    plan: str,
+    paypal_order_id: str,
+) -> None:
+    """
+    Send a purchase receipt email after successful fulfillment.
+    Non-fatal: logs a warning if mail is not configured or sending fails.
+    """
+    from flask import current_app
+    from flask_mail import Message
+    from extensions import mail
+
+    if not current_app.config.get("MAIL_SERVER"):
+        logger.warning(
+            "MAIL_SERVER not configured — purchase confirmation email not sent "
+            "for user %s order %s", user.id, paypal_order_id
+        )
+        return
+
+    plan_label    = _EMAIL_PLAN_LABELS.get(plan, plan.capitalize())
+    plan_features = _EMAIL_PLAN_FEATURES.get(plan, "")
+    is_credits    = plan in CREDIT_PACKS
+
+    if is_credits:
+        access_line = f"Your credit balance has been topped up with {CREDIT_PACKS[plan]} decisions."
+    else:
+        access_line = "Your account has been upgraded and full access is now active."
+
+    body = (
+        f"Hi {user.username},\n\n"
+        f"Thank you for your purchase — your payment has been confirmed.\n\n"
+        f"Order summary\n"
+        f"─────────────────────────────\n"
+        f"Plan:     {plan_label}\n"
+        f"Order ID: {paypal_order_id}\n"
+        f"─────────────────────────────\n\n"
+        f"{access_line}\n\n"
+        f"What you unlocked:\n"
+        f"{plan_features}\n\n"
+        f"This is a one-time purchase — no subscription, no recurring charges.\n\n"
+        f"Questions? Reply to this email or contact us at support@equiedgeai.io.\n\n"
+        f"EquiEdge AI\n"
+        f"https://equiedgeai.io"
+    )
+
+    try:
+        msg = Message(
+            subject    = f"Your EquiEdge AI {plan_label} purchase is confirmed",
+            recipients = [user.email],
+            body       = body,
+        )
+        mail.send(msg)
+        logger.info(
+            "Purchase confirmation email sent | user=%s plan=%s order=%s",
+            user.id, plan, paypal_order_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Could not send purchase confirmation email | user=%s order=%s error=%s",
+            user.id, paypal_order_id, exc,
+        )
+
 # Tier rank used to decide whether an upgrade is warranted
 _PLAN_RANK: dict[str, int] = {"none": 0, "beginner": 1, "pro": 2}
 
@@ -125,6 +219,10 @@ def _fulfill_purchase(
         "Purchase fulfilled | user=%s plan=%s order_id=%s source=%s",
         user.id, plan, paypal_order_id, source,
     )
+
+    # Send receipt email — non-fatal if mail is not configured
+    _send_purchase_confirmation(user=user, plan=plan, paypal_order_id=paypal_order_id)
+
     return True
 
 

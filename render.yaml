@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: equiedge-ai
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn "app:create_app()" --workers 2 --threads 2 --bind 0.0.0.0:$PORT --timeout 120
+    healthCheckPath: /health
+
+    envVars:
+      # ── Core (required) ─────────────────────────────────────────────────
+      - key: SECRET_KEY
+        sync: false          # Set this in the Render dashboard — never commit the value
+
+      # ── Database ─────────────────────────────────────────────────────────
+      - key: DATABASE_URL
+        sync: false          # Set to your PostgreSQL connection string in the dashboard
+
+      # ── PayPal (all required) ────────────────────────────────────────────
+      - key: PAYPAL_MODE
+        value: live          # Change to 'sandbox' for staging deployments
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false          # Required when PAYPAL_MODE=live
+
+      # ── Email / SMTP ─────────────────────────────────────────────────────
+      - key: MAIL_SERVER
+        sync: false          # e.g. smtp.mailgun.org
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USE_TLS
+        value: "true"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        value: noreply@equiedgeai.io
+      - key: CONTACT_RECIPIENT
+        sync: false          # Email address that receives contact form submissions

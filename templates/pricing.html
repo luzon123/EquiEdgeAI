@@ -20,7 +20,7 @@
         <span class="pricing-price-old">$129.90</span>
         <span class="pricing-price-current">$99.90</span>
       </div>
-      <div class="pricing-lifetime-badge">One-time purchase · Full access</div>
+      <div class="pricing-lifetime-badge">One-time purchase · No subscription · No renewal</div>
       <div class="pricing-tagline">Core engine access for improving players</div>
 
       <ul class="pricing-features">
@@ -56,7 +56,7 @@
         <span class="pricing-price-old">$199.90</span>
         <span class="pricing-price-current">$149.90</span>
       </div>
-      <div class="pricing-lifetime-badge">One-time purchase · Full access</div>
+      <div class="pricing-lifetime-badge">One-time purchase · No subscription · No renewal</div>
       <div class="pricing-tagline">Full engine access for serious players</div>
 
       <ul class="pricing-features">
@@ -116,6 +116,88 @@
   </div>
 
 
+</section>
+
+<!-- ── FAQ ──────────────────────────────────────────────────── -->
+<section class="faq-section">
+  <div class="section-label">FAQ</div>
+  <h2 class="section-heading" style="margin-bottom:32px;">Common Questions</h2>
+
+  <div class="faq-grid">
+
+    <div class="faq-item">
+      <div class="faq-q">Is this a subscription?</div>
+      <div class="faq-a">
+        No. Every plan is a one-time purchase. You pay once and keep access for as long as the
+        service is operated. There are no recurring charges, renewals, or hidden fees.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What do I get immediately after purchase?</div>
+      <div class="faq-a">
+        Access is activated instantly after payment is confirmed. You will also receive a
+        confirmation email with your order reference. Log in and open the engine — your new
+        tier will be active.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I upgrade from Beginner to Pro later?</div>
+      <div class="faq-a">
+        Yes. If you start on Beginner and later want Pro, you can purchase the Pro tier and
+        your account will be upgraded. You only pay the difference in product access — upgrade
+        any time.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What are Decision Credits?</div>
+      <div class="faq-a">
+        Credits are a pay-as-you-go option. Each analysis you run costs one credit. Credits
+        use Quick Mode with core engine features (win rate, EV, board texture). They never
+        expire and can be topped up any time, with or without a plan.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Does EquiEdge AI guarantee I will win money?</div>
+      <div class="faq-a">
+        No. EquiEdge AI is a decision-support tool that provides statistically optimal
+        recommendations based on the inputs you provide. Poker involves variance — even
+        correct decisions lose sometimes. The engine helps you make better decisions; results
+        depend on many factors outside its control.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What if I need help or have a problem?</div>
+      <div class="faq-a">
+        Contact us via the <a href="{{ url_for('pages.contact') }}" style="color:var(--accent);">Contact page</a>
+        or email support@equiedgeai.io directly. We aim to respond within 24–48 hours.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Is payment secure?</div>
+      <div class="faq-a">
+        Yes. Payments are processed by PayPal — we never see or store your card details.
+        PayPal uses industry-standard encryption and fraud protection. Your financial
+        information stays between you and PayPal.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I get a refund?</div>
+      <div class="faq-a">
+        All purchases are final and non-refundable, as stated in our
+        <a href="{{ url_for('pages.terms') }}" style="color:var(--accent);">Terms of Service</a>.
+        If you experience a technical issue that prevents access, contact support and we will
+        investigate and resolve it.
+      </div>
+    </div>
+
+  </div>
 </section>
 
 <!-- Pricing page extra styles -->
@@ -184,6 +266,40 @@
 @media (max-width: 640px) {
   .credit-pack-card   { flex-direction: column; }
   .credit-pack-right  { border-left: none; border-top: 1px solid var(--glass-border); padding-left: 0; padding-top: 20px; }
+}
+
+/* FAQ section */
+.faq-section {
+  margin-top: 72px;
+  padding-bottom: 16px;
+}
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.faq-item {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+}
+.faq-q {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+.faq-a {
+  font-size: .875rem;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+@media (max-width: 720px) {
+  .faq-grid { grid-template-columns: 1fr; }
 }
 </style>
 {% endblock %}

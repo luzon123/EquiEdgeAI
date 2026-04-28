@@ -63,15 +63,25 @@ def contact():
         else:
             reply_to = request.form.get("reply_email", "").strip()
 
-        _send_contact_email(subject=subject, message=message, reply_to=reply_to)
-        flash("Message sent! We'll get back to you within 24–48 hours.", "success")
+        sent = _send_contact_email(subject=subject, message=message, reply_to=reply_to)
+        if sent:
+            flash("Message sent! We'll get back to you within 24–48 hours.", "success")
+        else:
+            flash(
+                "Contact form is temporarily unavailable. "
+                "Please email us directly at support@equiedgeai.io.",
+                "error",
+            )
         return redirect(url_for("pages.contact"))
 
     return render_template("contact.html")
 
 
-def _send_contact_email(subject: str, message: str, reply_to: str) -> None:
-    """Forward contact form submission to CONTACT_RECIPIENT. Silently fails if not configured."""
+def _send_contact_email(subject: str, message: str, reply_to: str) -> bool:
+    """
+    Forward contact form submission to CONTACT_RECIPIENT.
+    Returns True on success, False on any failure (not configured / send error).
+    """
     from flask import current_app
     from flask_mail import Message
     from extensions import mail
@@ -79,7 +89,7 @@ def _send_contact_email(subject: str, message: str, reply_to: str) -> None:
     recipient = os.environ.get("CONTACT_RECIPIENT", "")
     if not recipient or not current_app.config.get("MAIL_SERVER", ""):
         logger.warning("Contact email not sent — MAIL_SERVER or CONTACT_RECIPIENT not configured.")
-        return
+        return False
 
     try:
         msg = Message(
@@ -90,8 +100,10 @@ def _send_contact_email(subject: str, message: str, reply_to: str) -> None:
         )
         mail.send(msg)
         logger.info("Contact form email sent: %s", subject)
+        return True
     except Exception as exc:
         logger.warning("Could not send contact email: %s", exc)
+        return False
 
 
 @pages_bp.route("/terms")

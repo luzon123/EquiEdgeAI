@@ -11,8 +11,10 @@ from flask_login import login_required, current_user
 
 from models import db
 from models.user import User
+from utils.logging_setup import get_logger
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+logger   = get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -89,11 +91,17 @@ def user_detail(user_id):
         if action == "update_plan":
             new_plan = request.form.get("plan", "none")
             if new_plan in ("none", "beginner", "pro"):
+                old_plan      = user.plan
                 user.plan         = new_plan
                 user.plan_active  = new_plan != "none"
                 user.purchased_at = datetime.utcnow() if new_plan != "none" else None
                 user.updated_at   = datetime.utcnow()
                 db.session.commit()
+                logger.info(
+                    "ADMIN ACTION | admin=%s(%d) updated plan for user=%s(%d): %s -> %s",
+                    current_user.username, current_user.id,
+                    user.username, user.id, old_plan, new_plan,
+                )
                 if new_plan == "none":
                     flash("Purchase tier removed.", "success")
                 else:
@@ -105,9 +113,15 @@ def user_detail(user_id):
         elif action == "update_credits":
             try:
                 delta        = int(request.form.get("credits_delta", 0))
+                old_credits  = user.credits
                 user.credits = max(0, user.credits + delta)
                 user.updated_at = datetime.utcnow()
                 db.session.commit()
+                logger.info(
+                    "ADMIN ACTION | admin=%s(%d) adjusted credits for user=%s(%d): %d -> %d (delta=%+d)",
+                    current_user.username, current_user.id,
+                    user.username, user.id, old_credits, user.credits, delta,
+                )
                 flash(f"Credits set to {user.credits}.", "success")
             except (ValueError, TypeError):
                 flash("Invalid credit amount.", "error")
@@ -118,6 +132,10 @@ def user_detail(user_id):
             user.updated_at = datetime.utcnow()
             db.session.commit()
             state = "activated" if user.is_active else "deactivated"
+            logger.info(
+                "ADMIN ACTION | admin=%s(%d) %s user=%s(%d)",
+                current_user.username, current_user.id, state, user.username, user.id,
+            )
             flash(f"User account {state}.", "success")
 
         # ── Toggle admin ─────────────────────────────────────────
@@ -129,6 +147,10 @@ def user_detail(user_id):
                 user.updated_at = datetime.utcnow()
                 db.session.commit()
                 state = "granted" if user.is_admin else "revoked"
+                logger.info(
+                    "ADMIN ACTION | admin=%s(%d) %s admin rights for user=%s(%d)",
+                    current_user.username, current_user.id, state, user.username, user.id,
+                )
                 flash(f"Admin access {state}.", "success")
 
         return redirect(url_for("admin.user_detail", user_id=user_id))
