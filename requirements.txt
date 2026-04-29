@@ -17,5 +17,8 @@ treys>=0.1.0
 # PayPal Orders API client
 requests>=2.31.0
 
+# PostgreSQL driver (required for Render / production)
+psycopg2-binary>=2.9.0
+
 # Production WSGI server
 gunicorn>=21.2.0

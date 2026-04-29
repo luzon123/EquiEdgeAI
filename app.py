@@ -108,10 +108,26 @@ def create_app() -> Flask:
             stacklevel=2,
         )
 
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "DATABASE_URL",
-        "sqlite:///" + os.path.join(os.path.abspath(os.path.dirname(__file__)), "poker.db"),
-    )
+    # Resolve database URL.
+    # Render PostgreSQL URLs historically use postgres:// but SQLAlchemy requires postgresql://.
+    _db_url = os.environ.get("DATABASE_URL", "").strip()
+    if _db_url.startswith("postgres://"):
+        _db_url = "postgresql://" + _db_url[len("postgres://"):]
+
+    if not _db_url:
+        # On Render (ephemeral filesystem) SQLite means data loss on every redeploy.
+        if os.environ.get("RENDER"):
+            raise RuntimeError(
+                "DATABASE_URL is not set. "
+                "Create a Render PostgreSQL database and link it to this service "
+                "via the DATABASE_URL environment variable, then redeploy."
+            )
+        # Local development only — SQLite is acceptable here.
+        _db_url = "sqlite:///" + os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "poker.db"
+        )
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # ── Flask-Mail ───────────────────────────────────────────────────────

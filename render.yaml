@@ -1,3 +1,10 @@
+databases:
+  # Render-managed PostgreSQL — persistent across all redeployments.
+  # Free tier is sufficient for launch; upgrade in the Render dashboard when needed.
+  - name: equiedge-db
+    databaseName: equiedge
+    plan: free
+
 services:
   - type: web
     name: equiedge-ai
@@ -12,8 +19,12 @@ services:
         sync: false          # Set this in the Render dashboard — never commit the value
 
       # ── Database ─────────────────────────────────────────────────────────
+      # Automatically populated from the equiedge-db PostgreSQL service above.
+      # Do NOT set this manually in the dashboard — fromDatabase overrides it.
       - key: DATABASE_URL
-        sync: false          # Set to your PostgreSQL connection string in the dashboard
+        fromDatabase:
+          name: equiedge-db
+          property: connectionString
 
       # ── PayPal (all required) ────────────────────────────────────────────
       - key: PAYPAL_MODE
