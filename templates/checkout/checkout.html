@@ -54,7 +54,7 @@
       </ul>
 
       <div class="co-secure-note">
-        🔒 Payments processed by PayPal. We never store or see your card details.
+        🔒 Payments processed securely by PayPal or Paddle. We never store your card details.
       </div>
 
     </div>
@@ -70,7 +70,7 @@
       <div id="co-status" class="co-status" style="display:none;"></div>
 
       <!-- ── PayPal Button only ─────────────────────────────── -->
-      <div id="paypal-button-container"></div>
+      <div id="paypal-button-container" data-plan="{{ plan }}"></div>
 
       {% if paddle_client_token and paddle_price_id %}
       <!-- ── Divider ───────────────────────────────────────────── -->
@@ -115,6 +115,14 @@
   var email    = btn.dataset.userEmail;
   var planKey  = btn.dataset.plan;
 
+  // Guard: disable button if any required field is missing.
+  if (!token || !priceId || !userId || !planKey) {
+    btn.disabled    = true;
+    btn.textContent = "Card checkout unavailable";
+    console.warn("Paddle checkout: missing required configuration (token, priceId, userId, or plan).");
+    return;
+  }
+
   if (env === "sandbox") {
     Paddle.Environment.set("sandbox");
   }
@@ -146,8 +154,8 @@
 
 <script>
 (function () {
-  // Plan embedded server-side — never trust JS to set the price
-  const PLAN_KEY = {{ plan | tojson }};
+  // Plan read from the data attribute — no Jinja2 inside script blocks.
+  const PLAN_KEY = document.getElementById("paypal-button-container").dataset.plan;
 
   // ── CSRF helper ───────────────────────────────────────────────
   function getCsrfToken() {

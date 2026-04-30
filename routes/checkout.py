@@ -255,7 +255,8 @@ def checkout_page(plan: str):
     }
     paddle_client_token = os.environ.get("PADDLE_CLIENT_TOKEN", "")
     paddle_price_id     = _paddle_price_ids.get(plan, "")
-    paddle_env          = os.environ.get("PADDLE_ENV", "sandbox").strip().lower()
+    _raw_paddle_env     = os.environ.get("PADDLE_ENV", "sandbox").strip().lower()
+    paddle_env          = _raw_paddle_env if _raw_paddle_env in ("sandbox", "production") else "sandbox"
 
     return render_template(
         "checkout/checkout.html",

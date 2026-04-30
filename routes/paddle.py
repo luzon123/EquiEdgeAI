@@ -5,12 +5,13 @@ Routes:
     POST /paddle/webhook    receive Paddle event webhooks (no session auth)
 
 Access is ONLY granted here, after Paddle's HMAC-SHA256 signature is
-verified against PADDLE_WEBHOOK_SECRET.  The frontend never grants access
-on its own.
+verified against PADDLE_WEBHOOK_SECRET.  The frontend never grants access.
 
-Fulfillment is idempotent: re-delivered webhooks for the same transaction
-are safely ignored because we check for an existing Purchase record with
-the same transaction ID before writing anything.
+Fulfillment is idempotent: re-delivered webhooks for the same Paddle
+transaction ID are safely ignored.  A database-level UNIQUE constraint on
+paypal_order_id (reused for Paddle tx IDs) is the last line of defence
+against a duplicate race; the IntegrityError is caught and treated as a
+no-op so Paddle always receives 200 and stops retrying.
 """
 from __future__ import annotations
 
@@ -22,18 +23,23 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, jsonify, request
+from sqlalchemy.exc import IntegrityError
 
 from extensions import csrf
 from models import db
 from models.purchase import Purchase
 from models.user import User
-from services.paypal import CREDIT_PACKS, PLAN_PRICES
+from services.paypal import PLAN_PRICES
 from utils.logging_setup import get_logger
 
 paddle_bp = Blueprint("paddle", __name__, url_prefix="/paddle")
 logger = get_logger()
 
 _PLAN_RANK: dict[str, int] = {"none": 0, "beginner": 1, "pro": 2}
+
+# Explicit allowlist — only tier upgrades are valid via Paddle.
+# Credits are a separate product type handled elsewhere; do not mix them here.
+_PADDLE_ALLOWED_PLANS: frozenset[str] = frozenset({"beginner", "pro"})
 
 
 # ---------------------------------------------------------------------------
@@ -44,7 +50,9 @@ def _verify_signature(headers, raw_body: bytes) -> bool:
     Verify a Paddle webhook using HMAC-SHA256.
 
     Paddle sends: Paddle-Signature: ts=<unix_ts>;h1=<hex_digest>
-    The signed payload is the string  "<ts>:<raw_body_utf8>"
+    The signed payload is the string "<ts>:<raw_body_utf8>".
+
+    Returns False (never raises) so callers can safely branch on the result.
     """
     secret = os.environ.get("PADDLE_WEBHOOK_SECRET", "").strip()
     if not secret:
@@ -64,7 +72,13 @@ def _verify_signature(headers, raw_body: bytes) -> bool:
         logger.warning("Paddle-Signature header is missing ts or h1 fields.")
         return False
 
-    signed_payload = f"{ts}:{raw_body.decode('utf-8')}"
+    try:
+        body_str = raw_body.decode("utf-8")
+    except UnicodeDecodeError:
+        logger.warning("Paddle webhook body is not valid UTF-8 — rejecting.")
+        return False
+
+    signed_payload = f"{ts}:{body_str}"
     expected = hmac.new(
         secret.encode("utf-8"),
         signed_payload.encode("utf-8"),
@@ -86,14 +100,15 @@ def _fulfill_paddle_transaction(
     currency: str,
 ) -> bool:
     """
-    Grant the purchased tier/credits and record the transaction.
+    Grant the purchased tier and record the transaction.
 
     Returns True  if fulfilled now.
-    Returns False if the transaction was already processed (idempotent guard).
+    Returns False if already processed (idempotent guard) or on a duplicate
+    insert race (IntegrityError from the UNIQUE constraint).
 
-    paddle_tx_id is stored in the paypal_order_id column — the column is a
-    generic unique transaction identifier; the 'source' field distinguishes
-    PayPal from Paddle records.
+    paddle_tx_id is stored in paypal_order_id — the column is a generic
+    unique transaction identifier; source='paddle_webhook' distinguishes
+    these records from PayPal ones.
     """
     existing = Purchase.query.filter_by(paypal_order_id=paddle_tx_id).first()
     if existing and existing.status == "completed":
@@ -117,7 +132,7 @@ def _fulfill_paddle_transaction(
             plan              = plan,
             amount_usd        = amount,
             currency          = currency,
-            paypal_order_id   = paddle_tx_id,   # reusing generic tx-ID column
+            paypal_order_id   = paddle_tx_id,   # generic tx-ID column; source distinguishes provider
             paypal_capture_id = None,
             status            = "completed",
             source            = "paddle_webhook",
@@ -125,16 +140,23 @@ def _fulfill_paddle_transaction(
         )
         db.session.add(purchase)
 
-    if plan in CREDIT_PACKS:
-        user.credits    += CREDIT_PACKS[plan]
-        user.updated_at  = now
-    elif _PLAN_RANK.get(plan, 0) > _PLAN_RANK.get(user.plan, 0):
+    # Tier upgrade only — never downgrade; credits are not handled here.
+    if _PLAN_RANK.get(plan, 0) > _PLAN_RANK.get(user.plan, 0):
         user.plan         = plan
         user.plan_active  = True
         user.purchased_at = now
         user.updated_at   = now
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        logger.info(
+            "Paddle fulfillment: concurrent duplicate delivery — already committed | tx=%s",
+            paddle_tx_id,
+        )
+        return False
+
     logger.info(
         "Paddle purchase fulfilled | user=%s plan=%s tx=%s",
         user.id, plan, paddle_tx_id,
@@ -164,9 +186,16 @@ def webhook():
     logger.info("Paddle webhook received | event_type=%s", event_type)
 
     if event_type == "transaction.completed":
-        _handle_transaction_completed(event)
+        try:
+            _handle_transaction_completed(event)
+        except Exception as exc:
+            # Return 200 so Paddle stops retrying; investigate via logs.
+            logger.exception(
+                "Unhandled error in Paddle transaction handler | event_type=%s error=%s",
+                event_type, exc,
+            )
 
-    # Paddle expects 200 quickly for all events, even ones we don't act on.
+    # Paddle expects 200 quickly for every event, including ones we don't act on.
     return jsonify({"status": "ok"}), 200
 
 
@@ -176,7 +205,7 @@ def _handle_transaction_completed(event: dict) -> None:
     status = data.get("status", "")
 
     if status != "completed":
-        logger.info("Paddle transaction status=%s — ignoring.", status)
+        logger.info("Paddle transaction not completed (status=%s) — ignoring | tx=%s", status, tx_id)
         return
 
     custom  = data.get("custom_data") or {}
@@ -195,8 +224,8 @@ def _handle_transaction_completed(event: dict) -> None:
         logger.error("Paddle webhook invalid user_id=%r | tx=%s", raw_uid, tx_id)
         return
 
-    if plan not in PLAN_PRICES:
-        logger.error("Paddle webhook unknown plan=%r | tx=%s", plan, tx_id)
+    if plan not in _PADDLE_ALLOWED_PLANS:
+        logger.error("Paddle webhook unknown or disallowed plan=%r | tx=%s", plan, tx_id)
         return
 
     user = User.query.get(user_id)
@@ -204,7 +233,7 @@ def _handle_transaction_completed(event: dict) -> None:
         logger.error("Paddle webhook user not found | user_id=%s tx=%s", user_id, tx_id)
         return
 
-    # Amount is in lowest denomination (cents); divide by 100 for USD.
+    # Amount is in lowest denomination (cents for USD); divide by 100.
     currency  = data.get("currency_code", "USD")
     totals    = (data.get("details") or {}).get("totals") or {}
     raw_total = totals.get("total", "0")
