@@ -25,6 +25,7 @@ from models import db
 from models.user import User
 from routes import api_bp, pages_bp
 from routes.checkout import checkout_bp
+from routes.paddle import paddle_bp
 from auth import auth_bp
 from admin import admin_bp
 import models.purchase          # noqa: F401 — registers Purchase with SQLAlchemy metadata
@@ -166,6 +167,7 @@ def create_app() -> Flask:
     app.register_blueprint(api_bp)
     app.register_blueprint(pages_bp)
     app.register_blueprint(checkout_bp)
+    app.register_blueprint(paddle_bp)
 
     # ── DB init ──────────────────────────────────────────────────────────
     with app.app_context():

@@ -36,6 +36,20 @@ services:
       - key: PAYPAL_WEBHOOK_ID
         sync: false          # Required when PAYPAL_MODE=live
 
+      # ── Paddle (card checkout — optional, button hidden when absent) ──
+      - key: PADDLE_ENV
+        value: sandbox       # Change to 'production' when your Paddle account is approved
+      - key: PADDLE_CLIENT_TOKEN
+        sync: false          # From Paddle dashboard → Developer → Authentication
+      - key: PADDLE_API_KEY
+        sync: false          # From Paddle dashboard → Developer → Authentication
+      - key: PADDLE_WEBHOOK_SECRET
+        sync: false          # From Paddle dashboard → Developer → Notifications → webhook secret
+      - key: PADDLE_BEGINNER_PRICE_ID
+        sync: false          # From Paddle dashboard → Catalog → Prices
+      - key: PADDLE_PRO_PRICE_ID
+        sync: false          # From Paddle dashboard → Catalog → Prices
+
       # ── Email / SMTP ─────────────────────────────────────────────────────
       - key: MAIL_SERVER
         sync: false          # e.g. smtp.mailgun.org

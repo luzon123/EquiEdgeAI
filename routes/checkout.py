@@ -247,13 +247,26 @@ def checkout_page(plan: str):
         logger.error("PAYPAL_CLIENT_ID not configured — checkout unavailable.")
         abort(500)
 
+    # Paddle — optional card checkout. Button is hidden when these are absent.
+    _paddle_price_ids: dict[str, str] = {
+        "beginner":  os.environ.get("PADDLE_BEGINNER_PRICE_ID", ""),
+        "pro":       os.environ.get("PADDLE_PRO_PRICE_ID", ""),
+        "credits15": os.environ.get("PADDLE_CREDITS15_PRICE_ID", ""),
+    }
+    paddle_client_token = os.environ.get("PADDLE_CLIENT_TOKEN", "")
+    paddle_price_id     = _paddle_price_ids.get(plan, "")
+    paddle_env          = os.environ.get("PADDLE_ENV", "sandbox").strip().lower()
+
     return render_template(
         "checkout/checkout.html",
-        plan            = plan,
-        plan_label      = PLAN_LABELS[plan],
-        plan_price      = PLAN_PRICES[plan],
-        paypal_client_id= paypal_client_id,
-        paypal_mode     = os.environ.get("PAYPAL_MODE", "sandbox"),
+        plan                = plan,
+        plan_label          = PLAN_LABELS[plan],
+        plan_price          = PLAN_PRICES[plan],
+        paypal_client_id    = paypal_client_id,
+        paypal_mode         = os.environ.get("PAYPAL_MODE", "sandbox"),
+        paddle_client_token = paddle_client_token,
+        paddle_price_id     = paddle_price_id,
+        paddle_env          = paddle_env,
     )
 
 
