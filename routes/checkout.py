@@ -6,41 +6,23 @@ from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 
 # ---------------------------------------------------------------------------
-# Imports from your application modules
+# Correct Imports for your project structure
 # ---------------------------------------------------------------------------
-try:
-    from app.extensions import db, limiter, csrf
-    from app.models import User, Purchase
-    from app.decorators import _api_login_required
-    from app.services.paypal import (
-        pp_create_order,
-        pp_capture_order,
-        extract_order_info,
-        verify_webhook_signature,
-    )
-    from app.constants import (
-        PLAN_PRICES,
-        PLAN_LABELS,
-        CREDIT_PACKS,
-        _PLAN_RANK,
-    )
-except ImportError:
-    # Fallback/Local imports if structured relative to blueprint
-    from .extensions import db, limiter, csrf  # type: ignore
-    from .models import User, Purchase  # type: ignore
-    from .decorators import _api_login_required  # type: ignore
-    from .paypal import (  # type: ignore
-        pp_create_order,
-        pp_capture_order,
-        extract_order_info,
-        verify_webhook_signature,
-    )
-    from .constants import (  # type: ignore
-        PLAN_PRICES,
-        PLAN_LABELS,
-        CREDIT_PACKS,
-        _PLAN_RANK,
-    )
+from extensions import db, limiter, csrf
+from models import User, Purchase
+from decorators import _api_login_required
+from paypal import (
+    pp_create_order,
+    pp_capture_order,
+    extract_order_info,
+    verify_webhook_signature,
+)
+from constants import (
+    PLAN_PRICES,
+    PLAN_LABELS,
+    CREDIT_PACKS,
+    _PLAN_RANK,
+)
 
 logger = logging.getLogger(__name__)
 
