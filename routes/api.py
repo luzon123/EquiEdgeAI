@@ -72,9 +72,11 @@ def decision_endpoint():
         stack          = adapted["stack"]
         player_profile = "reg"
         mode           = "fast"
-        line           = "none"
-        has_initiative = False
-        num_simulations = FAST_SIMULATIONS
+        line             = "none"
+        has_initiative   = False
+        num_raises       = 1
+        villain_position = None
+        num_simulations  = FAST_SIMULATIONS
 
     else:
         error_msg = validate_request(data)
@@ -82,17 +84,21 @@ def decision_endpoint():
             logger.warning("Bad request: %s | payload=%s", error_msg, data)
             return jsonify({"error": error_msg}), 400
 
-        hand           = [normalize_card(c) for c in data["hand"]]
-        board          = [normalize_card(c) for c in data["board"]]
-        players        = int(data["players"])
-        pot            = float(data["pot"])
-        bet            = float(data["bet"])
-        stack          = float(data["stack"])
-        position       = data["position"].upper()
-        player_profile = data.get("player_profile", "reg")
-        mode           = data.get("mode", "full")
-        line           = data.get("line", "none")
-        has_initiative = bool(data.get("has_initiative", False))
+        hand             = [normalize_card(c) for c in data["hand"]]
+        board            = [normalize_card(c) for c in data["board"]]
+        players          = int(data["players"])
+        pot              = float(data["pot"])
+        bet              = float(data["bet"])
+        stack            = float(data["stack"])
+        position         = data["position"].upper()
+        player_profile   = data.get("player_profile", "reg")
+        mode             = data.get("mode", "full")
+        line             = data.get("line", "none")
+        has_initiative   = bool(data.get("has_initiative", False))
+        num_raises       = int(data.get("num_raises", 1))
+        villain_position = data.get("villain_position")
+        if villain_position:
+            villain_position = villain_position.upper()
 
         if mode == "quick":
             num_simulations = QUICK_SIMULATIONS
@@ -112,8 +118,11 @@ def decision_endpoint():
         villain_stack = stack
     eff_stack = min(stack, villain_stack) if villain_stack > 0 else stack
 
-    # 3-bet pot: preflop facing a raise narrows villain's range significantly.
-    is_3bet_pot = (stage == "preflop" and bet > 0)
+    # 3-bet+ pot: only true when hero faces a SECOND (or later) preflop raise.
+    # A single open-raise is not a 3-bet — conflating the two previously forced
+    # villain's range down to premiums+strong hands even vs a plain open,
+    # understating villain's realistic range and skewing equity too high.
+    is_3bet_pot = (stage == "preflop" and bet > 0 and num_raises >= 2)
     logger.info(
         "Request | mode=%s stage=%s pos=%s hand=%s board=%s "
         "players=%d pot=%.1f bet=%.1f stack=%.1f sims=%d line=%s profile=%s",
@@ -132,7 +141,7 @@ def decision_endpoint():
 
         win_rate = simulate_equity(
             hand, board, players, position, num_simulations, stage, texture,
-            is_3bet_pot=is_3bet_pot,
+            is_3bet_pot=is_3bet_pot, villain_position=villain_position,
         )
 
         # On a complete board, the nuts hand wins every possible runout by

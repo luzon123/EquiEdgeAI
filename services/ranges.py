@@ -17,6 +17,13 @@ from config import (
 # 3-bet/4-bet callers/shippers: essentially premiums + top strong hands only
 _3BET_RANGE: frozenset = frozenset(PREMIUM_HANDS | STRONG_HANDS)
 
+# Population-average opponent range: union of every seat's opening range.
+# Used as the default villain-range proxy when the caller doesn't know (or
+# doesn't supply) the villain's actual table position — this avoids the bug
+# of assuming the opponent plays hero's own positional range (see
+# build_weighted_combo_pool).
+_AVERAGE_VILLAIN_RANGE: list = sorted(set().union(*POSITION_RANGES.values()))
+
 
 def expand_range_combos(hand_str: str) -> list:
     suited_only  = hand_str.endswith("s") and len(hand_str) == 3
@@ -161,15 +168,31 @@ def build_weighted_combo_pool(
     texture: dict,
     hero_cards: list,
     is_3bet_pot: bool = False,
+    villain_position: Optional[str] = None,
 ) -> dict:
+    """
+    Build the weighted pool of possible opponent hole-card combos.
+
+    `position` is hero's own seat and is NOT used to select the range —
+    the opponent's range must come from the opponent's own tendencies, not
+    hero's.  When `villain_position` is supplied (known/estimated), the
+    opponent's range is built from POSITION_RANGES[villain_position].
+    Otherwise we fall back to a population-average range (union of every
+    seat's opening range) rather than incorrectly mirroring hero's range.
+    """
     hero_set: set  = set(hero_cards)
     board_set: set = set(board)
     weighted_pool: dict = {}
 
+    range_hands = (
+        POSITION_RANGES.get(villain_position, _AVERAGE_VILLAIN_RANGE)
+        if villain_position else _AVERAGE_VILLAIN_RANGE
+    )
+
     # Create evaluator once for board-strength weighting (only needed post-flop)
     evaluator = Evaluator() if len(board) >= 3 else None
 
-    for hand_str in POSITION_RANGES.get(position, POSITION_RANGES["BTN"]):
+    for hand_str in range_hands:
         tier_w = _stage_weight_decay(hand_str, stage)
         # 3-bet/4-bet pots: villain's range collapses to premiums + strong hands.
         # Apply a heavy weight reduction to non-qualifying hands so the equity

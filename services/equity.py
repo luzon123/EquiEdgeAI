@@ -61,6 +61,10 @@ def _river_equity_exact(hand: list, board: list, num_opponents: int) -> float:
         logger.debug("River exact | total_combos=%d wins=%d ties=%d", total, wins, ties)
         return (wins + ties * 0.5) / total if total else 0.5
 
+    # No opponents to compare against — hero wins by definition.
+    if num_opponents <= 0:
+        return 1.0
+
     # ── Multiple opponents: uniform random MC (no future cards, no range bias) ──
     RIVER_SIMS = 5_000
     wins = ties = valid_runs = 0
@@ -105,6 +109,7 @@ def simulate_equity(
     stage: str = "preflop",
     texture: Optional[dict] = None,
     is_3bet_pot: bool = False,
+    villain_position: Optional[str] = None,
 ) -> float:
     if texture is None:
         texture = analyze_board_texture(board)
@@ -119,7 +124,8 @@ def simulate_equity(
     evaluator     = Evaluator()
     full_deck     = get_full_deck()
     weighted_pool = build_weighted_combo_pool(position, board, stage, texture, hand,
-                                              is_3bet_pot=is_3bet_pot)
+                                              is_3bet_pot=is_3bet_pot,
+                                              villain_position=villain_position)
     base_known: set = set(hand + board)
     wins = ties = valid_runs = 0
 

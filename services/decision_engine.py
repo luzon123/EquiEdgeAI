@@ -353,7 +353,16 @@ def decide_action(
             if tv_ev > call_ev * 1.04:
                 return f"RAISE {tv_size}", call_ev, tv_ev, tv_brkdwn["p_fold"], tv_brkdwn
 
-        if win_rate >= thresholds["raise_threshold"]:
+        # Weak made hands (bottom pair / worst kicker) facing an existing bet
+        # should never "raise for value" off raw win-rate alone — river win
+        # rate vs a single opponent is computed via unweighted card removal
+        # (literally any 2 cards), not villain's realistic betting range, and
+        # can overstate a weak hand's edge once villain has already bet.
+        # Continuing with a weak_made hand facing a bet belongs to the
+        # bluff-catch path above (range-aware) or the fold below, not here.
+        value_raise_eligible = not (bet > 0 and hand_class == "weak_made")
+
+        if value_raise_eligible and win_rate >= thresholds["raise_threshold"]:
             rs          = compute_raise_size(pot, stack, stage, hand_class, texture,
                                               is_bluff=False, spr=spr)
             rev, brkdwn = calculate_raise_ev(win_rate, pot, bet, rs, stage,

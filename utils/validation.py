@@ -69,6 +69,16 @@ def validate_request(data: dict) -> Optional[str]:
     if mode_val not in VALID_MODES:
         return f"'mode' must be one of: {', '.join(sorted(VALID_MODES))}."
 
+    if "num_raises" in data:
+        nr = data["num_raises"]
+        if not isinstance(nr, int) or isinstance(nr, bool) or nr < 1:
+            return "'num_raises' must be a positive integer (1 = facing an open-raise)."
+
+    if data.get("villain_position") is not None:
+        vp = data["villain_position"]
+        if not isinstance(vp, str) or vp.upper() not in VALID_POSITIONS:
+            return f"'villain_position' must be one of: {', '.join(sorted(VALID_POSITIONS))}."
+
     card_err = _validate_cards(list(data["hand"]) + list(data["board"]))
     if card_err:
         return card_err

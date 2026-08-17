@@ -21,4 +21,4 @@ def get_profile_multipliers(player_profile: str) -> dict:
         call_freq_mult    — scale on how often opponent calls (informational)
         range_tightness   — how much tighter (+) or looser (–) opponent's range is
     """
-    return PLAYER_PROFILES.get(player_profile, PLAYER_PROFILES["default"]).copy()
+    return PLAYER_PROFILES.get(player_profile, PLAYER_PROFILES["reg"]).copy()

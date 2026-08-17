@@ -107,7 +107,12 @@ def classify_hero_hand(hand: list, board: list) -> str:
         return "strong_made"
 
     if rank_str == "Three of a Kind":
-        return "near_nuts" if r1 == r2 else "strong_made"
+        # A flopped/rivered set can genuinely BE the nuts on a dry, unpaired,
+        # rainbow board (no boat/flush/straight/higher-trips possible) — verify
+        # with is_nuts() instead of always capping pocket-pair sets at near_nuts.
+        if r1 == r2:
+            return "nuts" if is_nuts(hand, board) else "near_nuts"
+        return "strong_made"
 
     if rank_str == "Two Pair":
         board_rank_idxs_sorted = sorted([RANK_ORDER[r] for r in board_ranks])
@@ -159,6 +164,13 @@ def classify_hero_hand(hand: list, board: list) -> str:
         if len(board_rank_idxs) > 1 and paired_idx == board_rank_idxs[1]:
             return "medium_made"
         return "weak_made"
+
+    # On a complete 5-card board there are no future cards — an unmade draw
+    # is simply air, not an active draw.  Without this guard, a busted flush
+    # or straight draw on the river was being labelled "strong_draw", which
+    # led decision logic to (incorrectly) treat a dead hand as having live outs.
+    if len(board) == 5:
+        return "air"
 
     # Draw detection — compute flush draw and straight draw simultaneously so
     # a combo draw (flush draw + OESD, ≈15 outs) can be caught before the

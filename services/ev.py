@@ -270,6 +270,15 @@ def calculate_raise_ev(
             0.55 * (win_rate * (pot + raise_amount * 2.5) - (1.0 - win_rate) * raise_amount)
             + 0.45 * (-raise_amount)
         )
+    elif hand_class in ("combo_draw", "strong_draw") and stage != "river":
+        # Draws retain genuine equity vs a re-raise instead of auto-folding —
+        # a combo draw (~15 outs) profitably continues far more often than a
+        # bare flush/straight draw, which mostly relies on implied odds.
+        continue_weight = 0.45 if hand_class == "combo_draw" else 0.28
+        ev_continue = win_rate * (pot + raise_amount * 2.5) - (1.0 - win_rate) * raise_amount
+        ev_reraise_response = (
+            continue_weight * ev_continue + (1.0 - continue_weight) * (-raise_amount)
+        )
     else:
         ev_reraise_response = -raise_amount
 
