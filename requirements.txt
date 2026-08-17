@@ -1,6 +1,7 @@
 # Core
 flask>=2.3.0
 werkzeug>=2.3.0
+gunicorn>=21.2.0
 
 # Security
 flask-wtf>=1.2.0
