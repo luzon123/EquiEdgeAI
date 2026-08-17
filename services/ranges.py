@@ -219,7 +219,8 @@ def estimate_range_advantage(
     texture: dict,
 ) -> float:
     pos_tightness = {
-        "UTG": 0.90, "MP": 0.75, "CO": 0.55,
+        "UTG": 0.90, "UTG+1": 0.87, "UTG+2": 0.83,
+        "MP": 0.75, "CO": 0.55,
         "BTN": 0.35, "SB": 0.50, "BB": 0.40,
     }.get(position, 0.55)
 

@@ -1,3 +1,1 @@
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
+# models package — only vision_result remains after SaaS removal

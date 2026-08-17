@@ -1,15 +1,9 @@
 """
 API routes: POST /decision and GET /health.
-
-v2 additions: player_profile, mode
-v3 additions: authentication, plan/credit gating, response gating by plan tier
-v4 additions: fast mode (categorical inputs, simplified output)
 """
 from __future__ import annotations
-from functools import wraps
 
 from flask import Blueprint, jsonify, request
-from flask_login import current_user
 
 from extensions import limiter
 
@@ -38,55 +32,19 @@ from services.coach import (
     compute_ux_signals,
     compute_what_if,
 )
-from services.access import check_access, deduct_credit, record_decision, apply_plan_gating, apply_fast_mode_gating
 from services.fast_mode_adapter import adapt_fast_inputs, get_sizing_category
 
 api_bp = Blueprint("api", __name__)
 logger = get_logger()
 
 
-# ---------------------------------------------------------------------------
-# Auth decorator for JSON API endpoints
-# ---------------------------------------------------------------------------
-def api_login_required(f):
-    """Like @login_required but returns JSON 401 instead of redirecting."""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({
-                "error":    "Authentication required. Please log in.",
-                "redirect": "/login",
-            }), 401
-        return f(*args, **kwargs)
-    return decorated
-
 
 # ---------------------------------------------------------------------------
 # POST /decision
 # ---------------------------------------------------------------------------
 @api_bp.route("/decision", methods=["POST"])
-@api_login_required
-@limiter.limit("60 per minute")
+@limiter.limit("120 per minute")
 def decision_endpoint():
-    # ── Access check ──────────────────────────────────────────────────────
-    has_access, reason = check_access(current_user)
-    if not has_access:
-        if reason == "deactivated":
-            msg = "Your account has been deactivated. Contact support."
-        else:
-            msg = (
-                "You have no active plan and no credits remaining. "
-                "Upgrade your plan to continue using the engine."
-            )
-        return jsonify({
-            "error":            msg,
-            "upgrade_required": True,
-        }), 403
-
-    # ── Feature tier for this user ────────────────────────────────────────
-    feature_tier = current_user.get_feature_tier()   # 'pro' | 'beginner'
-    is_pro       = feature_tier == "pro"
-
     # ── Parse request ─────────────────────────────────────────────────────
     data = request.get_json(silent=True)
     if data is None:
@@ -94,16 +52,9 @@ def decision_endpoint():
             "error": "Request body must be valid JSON with Content-Type: application/json."
         }), 400
 
-    # ── Detect mode before branching to the correct validator ────────────
+    # ── Detect mode ───────────────────────────────────────────────────────
     request_mode = data.get("mode", "full")
     is_fast      = request_mode == "fast"
-
-    # ── Fast mode is Pro-only ─────────────────────────────────────────────
-    if is_fast and not is_pro:
-        return jsonify({
-            "error":            "Fast Decision is a Pro feature. Upgrade your plan to use it.",
-            "upgrade_required": True,
-        }), 403
 
     # ── Branch: parameter extraction ──────────────────────────────────────
     if is_fast:
@@ -115,7 +66,7 @@ def decision_endpoint():
         hand           = [normalize_card(c) for c in data["hand"]]
         board          = [normalize_card(c) for c in data["board"]]
         position       = data["position"].upper()
-        players        = adapted["players"]        # always 2
+        players        = adapted["players"]
         pot            = adapted["pot"]
         bet            = adapted["bet"]
         stack          = adapted["stack"]
@@ -131,25 +82,17 @@ def decision_endpoint():
             logger.warning("Bad request: %s | payload=%s", error_msg, data)
             return jsonify({"error": error_msg}), 400
 
-        hand    = [normalize_card(c) for c in data["hand"]]
-        board   = [normalize_card(c) for c in data["board"]]
-        players = int(data["players"])
-        pot     = float(data["pot"])
-        bet     = float(data["bet"])
-        stack   = float(data["stack"])
-        position = data["position"].upper()
-
-        # Enforce plan-based feature limits
-        if is_pro:
-            player_profile  = data.get("player_profile", "reg")
-            mode            = data.get("mode", "full")
-            line            = data.get("line", "none")
-            has_initiative  = bool(data.get("has_initiative", False))
-        else:
-            player_profile  = "reg"    # exploit engine locked for non-pro
-            mode            = "quick"  # full mode locked for non-pro
-            line            = "none"   # hero line locked for non-pro
-            has_initiative  = bool(data.get("has_initiative", False))
+        hand           = [normalize_card(c) for c in data["hand"]]
+        board          = [normalize_card(c) for c in data["board"]]
+        players        = int(data["players"])
+        pot            = float(data["pot"])
+        bet            = float(data["bet"])
+        stack          = float(data["stack"])
+        position       = data["position"].upper()
+        player_profile = data.get("player_profile", "reg")
+        mode           = data.get("mode", "full")
+        line           = data.get("line", "none")
+        has_initiative = bool(data.get("has_initiative", False))
 
         if mode == "quick":
             num_simulations = QUICK_SIMULATIONS
@@ -172,9 +115,9 @@ def decision_endpoint():
     # 3-bet pot: preflop facing a raise narrows villain's range significantly.
     is_3bet_pot = (stage == "preflop" and bet > 0)
     logger.info(
-        "Request | user=%s tier=%s mode=%s stage=%s pos=%s hand=%s board=%s "
+        "Request | mode=%s stage=%s pos=%s hand=%s board=%s "
         "players=%d pot=%.1f bet=%.1f stack=%.1f sims=%d line=%s profile=%s",
-        current_user.username, feature_tier, mode, stage, position,
+        mode, stage, position,
         hand, board, players, pot, bet, stack,
         num_simulations, line, player_profile,
     )
@@ -293,17 +236,10 @@ def decision_endpoint():
         logger.exception("Unhandled engine error: %s", exc)
         return jsonify({"error": "Internal engine error. Check server logs."}), 500
 
-    # ── Record usage / deduct credit ──────────────────────────────────────
-    if reason == "credits":
-        deduct_credit(current_user)
-    else:
-        record_decision(current_user)
-
     logger.info(
-        "Response | user=%s tier=%s mode=%s wr=%.4f ev_c=%.2f ev_r=%.2f "
+        "Response | mode=%s wr=%.4f ev_c=%.2f ev_r=%.2f "
         "class=%s spr=%.2f conf=%.2f action=%s tags=%s",
-        current_user.username, feature_tier, mode,
-        win_rate, ev_call, ev_raise,
+        mode, win_rate, ev_call, ev_raise,
         hand_class, spr, confidence, action, tags,
     )
 
@@ -332,16 +268,7 @@ def decision_endpoint():
         "what_if":               what_if,
         # ── Fast mode extras ──────────────────────────────────────────────
         "sizing_category":  sizing_category,
-        # ── Plan context ──────────────────────────────────────────────────
-        "plan":             current_user.get_plan_tier(),
-        "credits_remaining": current_user.credits,
     }
-
-    # Apply the appropriate response filter
-    if is_fast:
-        apply_fast_mode_gating(response)
-    else:
-        apply_plan_gating(response, feature_tier)
 
     return jsonify(response)
 

@@ -352,6 +352,97 @@
   border-color: rgba(34,208,122,.28);
   color: var(--green);
 }
+
+/* ── Screenshot Analyzer Zone ────────────────────────────── */
+.screenshot-zone {
+  margin: 0 0 14px 0;
+  border: 2px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(6,14,28,0.55);
+  transition: border-color .2s, background .2s;
+  overflow: hidden;
+}
+.screenshot-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(50,179,255,.07);
+}
+.sz-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px 22px;
+  gap: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+.sz-icon { font-size: 2rem; line-height: 1; }
+.sz-title { font-weight: 700; font-size: 1rem; color: var(--text); margin-top: 4px; }
+.sz-sub   { font-size: .78rem; color: var(--muted); max-width: 380px; line-height: 1.5; }
+.sz-btn {
+  margin-top: 10px;
+  padding: 9px 22px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: background .15s;
+}
+.sz-btn:hover { background: rgba(50,179,255,.18); }
+
+.sz-loading {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 30px; gap: 14px;
+}
+.sz-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.sz-loading-text { font-size: .85rem; color: var(--muted); }
+
+.sz-result { padding: 14px 16px; }
+.sz-result-header {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.sz-result-icon  { font-size: 1.1rem; }
+.sz-result-title { font-weight: 700; font-size: .9rem; color: var(--text); }
+.sz-conf {
+  font-size: .78rem; color: var(--green); font-weight: 600;
+  background: rgba(34,208,122,.12);
+  border: 1px solid rgba(34,208,122,.25);
+  border-radius: 6px; padding: 2px 8px;
+}
+.sz-clear {
+  margin-left: auto; background: none; border: none;
+  color: var(--muted); font-size: .8rem; cursor: pointer;
+}
+.sz-clear:hover { color: var(--text); }
+.sz-fields-filled {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.sz-field-tag {
+  font-size: .75rem; padding: 3px 9px; border-radius: 6px;
+  background: rgba(50,179,255,.1); border: 1px solid rgba(50,179,255,.22);
+  color: var(--accent);
+}
+.sz-warnings {
+  margin-top: 8px; font-size: .75rem; color: var(--yellow);
+  background: rgba(255,201,77,.08); border: 1px solid rgba(255,201,77,.2);
+  border-radius: 6px; padding: 6px 10px;
+}
+.sz-error {
+  display: flex; align-items: center; gap: 10px; padding: 16px;
+  color: #e74c3c; font-size: .85rem; flex-wrap: wrap;
+}
+.sz-error-icon { font-size: 1.2rem; }
 </style>
 {% endblock %}
 
@@ -401,6 +492,45 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────
+       SCREENSHOT ANALYZER
+  ─────────────────────────────────────────────────────── -->
+  <div class="screenshot-zone" id="screenshotZone">
+    <input type="file" id="screenshotInput" accept="image/png,image/jpeg,image/jpg"
+           style="display:none" onchange="handleScreenshotFile(this.files[0])">
+
+    <div class="sz-idle" id="szIdle">
+      <div class="sz-icon">📸</div>
+      <div class="sz-title">Analyze Screenshot</div>
+      <div class="sz-sub">Drop a poker table screenshot here or click to upload — GPT will auto-fill all fields</div>
+      <button class="sz-btn" onclick="document.getElementById('screenshotInput').click()">
+        Choose Screenshot
+      </button>
+    </div>
+
+    <div class="sz-loading" id="szLoading" style="display:none">
+      <div class="sz-spinner"></div>
+      <div class="sz-loading-text">Analyzing screenshot with GPT-4o…</div>
+    </div>
+
+    <div class="sz-result" id="szResult" style="display:none">
+      <div class="sz-result-header">
+        <span class="sz-result-icon">✅</span>
+        <span class="sz-result-title">Screenshot analyzed</span>
+        <span class="sz-conf" id="szConf"></span>
+        <button class="sz-clear" onclick="resetScreenshotZone()">✕ Clear</button>
+      </div>
+      <div class="sz-fields-filled" id="szFieldsFilled"></div>
+      <div class="sz-warnings" id="szWarnings" style="display:none"></div>
+    </div>
+
+    <div class="sz-error" id="szError" style="display:none">
+      <span class="sz-error-icon">⚠️</span>
+      <span id="szErrorMsg"></span>
+      <button class="sz-clear" onclick="resetScreenshotZone()">Try again</button>
+    </div>
   </div>
 
   <!-- ──────────────────────────────────────────────────────
@@ -484,7 +614,8 @@
     <div class="field">
       <label data-i18n="label-position">Position</label>
       <select id="position">
-        <option>UTG</option><option>MP</option><option>CO</option>
+        <option>UTG</option><option>UTG+1</option><option>UTG+2</option>
+        <option>MP</option><option>CO</option>
         <option selected>BTN</option><option>SB</option><option>BB</option>
       </select>
     </div>
@@ -620,7 +751,7 @@
         <div class="lock-mask">
           <span class="lock-icon">🔒</span>
           <span class="lock-label">Pro feature</span>
-          <a href="{{ url_for('pages.pricing') }}" class="lock-btn">Upgrade</a>
+          <a href="{{ '#' }}" class="lock-btn">Upgrade</a>
         </div>
       </div>
       {% endif %}
@@ -641,7 +772,7 @@
         decision{{ 's' if user_credits != 1 else '' }} remaining.
       </span>
       Each decision costs 1 credit.
-      <a href="{{ url_for('pages.pricing') }}" style="color:var(--accent);font-weight:600;">Buy more →</a>
+      <a href="{{ '#' }}" style="color:var(--accent);font-weight:600;">Buy more →</a>
     </div>
     {% endif %}
 
@@ -692,7 +823,7 @@
           <div class="upgrade-notice-title">Pro Feature</div>
           <div class="upgrade-notice-desc">
             Decision tags (VALUE, BLUFF, PROTECTION…) are available on the Pro plan.
-            <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+            <a href="{{ '#' }}">Upgrade →</a>
           </div>
         </div>
       </div>
@@ -734,7 +865,7 @@
           <div class="upgrade-notice-title">Pro Feature</div>
           <div class="upgrade-notice-desc">
             Multi-bullet AI coaching and decision reasoning are available on the Pro plan.
-            <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+            <a href="{{ '#' }}">Upgrade →</a>
           </div>
         </div>
       </div>
@@ -783,7 +914,7 @@
           <div class="upgrade-notice-title">Pro Feature</div>
           <div class="upgrade-notice-desc">
             Confidence score, aggression score, and risk level are available on the Pro plan.
-            <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+            <a href="{{ '#' }}">Upgrade →</a>
           </div>
         </div>
       </div>
@@ -805,7 +936,7 @@
           <div class="upgrade-notice-title">Pro Feature</div>
           <div class="upgrade-notice-desc">
             What-If analysis simulates opponent raises and future board cards.
-            <a href="{{ url_for('pages.pricing') }}">Upgrade to Pro →</a>
+            <a href="{{ '#' }}">Upgrade to Pro →</a>
           </div>
         </div>
       </div>
@@ -866,8 +997,187 @@
 <!-- Upgrade toast (shown when non-Pro clicks Fast Decision) -->
 <div id="upgradeToast" class="upgrade-toast" role="alert" aria-live="polite">
   🔒 <strong>Fast Decision</strong> is a Pro feature.
-  <a href="{{ url_for('pages.pricing') }}">Upgrade →</a>
+  <a href="{{ '#' }}">Upgrade →</a>
 </div>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<script>
+// ── Screenshot Analyzer ────────────────────────────────────────────────────
+
+(function () {
+  var zone = document.getElementById('screenshotZone');
+
+  // Drag-and-drop support
+  zone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', function () {
+    zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    var file = e.dataTransfer.files[0];
+    if (file) handleScreenshotFile(file);
+  });
+
+  // Click on idle area also opens file picker
+  document.getElementById('szIdle').addEventListener('click', function (e) {
+    if (e.target.tagName !== 'BUTTON') {
+      document.getElementById('screenshotInput').click();
+    }
+  });
+})();
+
+function resetScreenshotZone() {
+  document.getElementById('szIdle').style.display    = '';
+  document.getElementById('szLoading').style.display = 'none';
+  document.getElementById('szResult').style.display  = 'none';
+  document.getElementById('szError').style.display   = 'none';
+  document.getElementById('screenshotInput').value   = '';
+}
+
+function handleScreenshotFile(file) {
+  if (!file) return;
+
+  var allowed = ['image/png', 'image/jpeg', 'image/jpg'];
+  if (!allowed.includes(file.type)) {
+    showSzError('Unsupported file type. Please use PNG or JPG.');
+    return;
+  }
+
+  // Show loading state
+  document.getElementById('szIdle').style.display    = 'none';
+  document.getElementById('szLoading').style.display = '';
+  document.getElementById('szResult').style.display  = 'none';
+  document.getElementById('szError').style.display   = 'none';
+
+  var formData = new FormData();
+  formData.append('image', file);
+
+  fetch('/api/analyze-image', {
+    method: 'POST',
+    body: formData,
+  })
+  .then(function (res) { return res.json(); })
+  .then(function (data) {
+    document.getElementById('szLoading').style.display = 'none';
+
+    if (!data.success) {
+      var msg = (data.details && data.details.length)
+        ? data.details.join(' | ')
+        : (data.error || 'Analysis failed.');
+      showSzError(msg);
+      return;
+    }
+
+    applyGameState(data.game_state, data.warnings || []);
+  })
+  .catch(function (err) {
+    document.getElementById('szLoading').style.display = 'none';
+    showSzError('Network error — is the server running? (' + err.message + ')');
+  });
+}
+
+function showSzError(msg) {
+  document.getElementById('szIdle').style.display   = 'none';
+  document.getElementById('szError').style.display  = '';
+  document.getElementById('szErrorMsg').textContent = msg;
+}
+
+function applyGameState(gs, warnings) {
+  var filled = [];
+
+  // ── Cards ────────────────────────────────────────────────
+  if (gs.hero_cards && gs.hero_cards.length === 2) {
+    document.getElementById('hand').value = gs.hero_cards.join(',');
+    if (typeof renderCards === 'function') renderCards(gs.hero_cards, 'heroCards', true);
+    filled.push('Hero Hand: ' + gs.hero_cards.join(' '));
+  }
+  if (gs.board && gs.board.length > 0) {
+    document.getElementById('board').value = gs.board.join(',');
+    if (typeof updateLiveBoardStrip === 'function') updateLiveBoardStrip();
+    filled.push('Board: ' + gs.board.join(' '));
+  } else if (gs.board && gs.board.length === 0) {
+    document.getElementById('board').value = '';
+    if (typeof updateLiveBoardStrip === 'function') updateLiveBoardStrip();
+  }
+
+  // ── Numeric fields ───────────────────────────────────────
+  if (gs.pot != null) {
+    document.getElementById('pot').value = Math.round(gs.pot);
+    filled.push('Pot: ' + gs.pot);
+  }
+  if (gs.call_amount != null) {
+    document.getElementById('bet').value = Math.round(gs.call_amount);
+    filled.push('Bet/Call: ' + gs.call_amount);
+  }
+  if (gs.hero_stack != null) {
+    document.getElementById('stack').value = Math.round(gs.hero_stack);
+    filled.push('Stack: ' + gs.hero_stack);
+  }
+  if (gs.player_count != null) {
+    var pInput = document.getElementById('players');
+    if (pInput) { pInput.value = gs.player_count; filled.push('Players: ' + gs.player_count); }
+  }
+
+  // ── Position ─────────────────────────────────────────────
+  // Prefer the directly-extracted hero_position (Claude), fall back to seat inference.
+  var resolvedPos = gs.hero_position || null;
+  if (!resolvedPos && gs.dealer_position != null && gs.hero_seat != null) {
+    resolvedPos = _inferPosition(gs.hero_seat, gs.dealer_position, gs.player_count || 2);
+  }
+  if (resolvedPos) {
+    var sel = document.getElementById('position');
+    if (sel) {
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === resolvedPos || sel.options[i].text === resolvedPos) {
+          sel.selectedIndex = i; break;
+        }
+      }
+      filled.push('Position: ' + resolvedPos);
+    }
+  }
+
+  // ── Show result panel ────────────────────────────────────
+  var conf = gs.overall_confidence || 0;
+  document.getElementById('szConf').textContent = 'Confidence: ' + Math.round(conf * 100) + '%';
+
+  var tagsEl = document.getElementById('szFieldsFilled');
+  tagsEl.innerHTML = filled.map(function (f) {
+    return '<span class="sz-field-tag">' + f + '</span>';
+  }).join('');
+
+  var warnEl = document.getElementById('szWarnings');
+  if (warnings.length) {
+    warnEl.textContent = '⚠ ' + warnings.join(' | ');
+    warnEl.style.display = '';
+  } else {
+    warnEl.style.display = 'none';
+  }
+
+  document.getElementById('szResult').style.display = '';
+
+  // Trigger UI refresh if app.js exposes it
+  if (typeof updateCardDisplays === 'function') updateCardDisplays();
+}
+
+function _inferPosition(heroSeat, dealerSeat, totalPlayers) {
+  // Compute relative distance from dealer button (clockwise: 0=BTN, 1=SB, 2=BB, 3=UTG ...)
+  var dist = (heroSeat - dealerSeat + totalPlayers) % totalPlayers;
+  if (totalPlayers <= 2) return dist === 0 ? 'BTN' : 'BB';
+  if (dist === 0) return 'BTN';
+  if (dist === 1) return 'SB';
+  if (dist === 2) return 'BB';
+  if (totalPlayers <= 4) return 'UTG';
+  if (dist === 3) return 'UTG';
+  if (dist === 4 && totalPlayers >= 7) return 'UTG+1';
+  if (dist === 5 && totalPlayers >= 8) return 'UTG+2';
+  if (dist === totalPlayers - 1) return 'CO';   // last before BTN
+  if (dist === totalPlayers - 2) return 'HJ';
+  return 'MP';
+}
+</script>
 {% endblock content %}

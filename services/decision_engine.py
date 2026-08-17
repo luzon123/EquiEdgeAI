@@ -205,11 +205,11 @@ def decide_action(
     pos_factor = POSITION_AGGRESSION.get(position, 0.5)
 
     # Board rank information: use high/low card board flags from texture to
-    # refine range advantage — tight UTG/MP ranges dominate high boards,
+    # refine range advantage — tight UTG/UTG+1/UTG+2/MP ranges dominate high boards,
     # wide BTN/CO ranges have an edge on low boards.
     hcb = texture.get("high_card_board", False)
     lcb = texture.get("low_card_board", False)
-    if hcb and position in ("UTG", "MP"):
+    if hcb and position in ("UTG", "UTG+1", "UTG+2", "MP"):
         range_advantage = min(1.0, range_advantage + 0.08)
     elif lcb and position in ("BTN", "CO"):
         range_advantage = min(1.0, range_advantage + 0.06)

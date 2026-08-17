@@ -1,21 +1,17 @@
 # Core
 flask>=2.3.0
-flask-sqlalchemy>=3.0.0
-flask-login>=0.6.0
 werkzeug>=2.3.0
 
 # Security
 flask-wtf>=1.2.0
 flask-limiter>=3.5.0
 
-# Email
-flask-mail>=0.9.1
-
 # Poker engine
 treys>=0.1.0
 
-# PayPal Orders API client
-requests>=2.31.0
+# Vision pipeline
+anthropic>=0.25.0
+Pillow>=10.0.0
 
-# Production WSGI server
-gunicorn>=21.2.0
+# Environment variables from .env file
+python-dotenv>=1.0.0

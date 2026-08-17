@@ -15,164 +15,22 @@
 <body>
 
 {% block navbar %}
-<!-- ══════════════════════════════════════════════════════════
-     SITE NAVIGATION
-═══════════════════════════════════════════════════════════ -->
 <nav class="site-nav">
   <div class="nav-inner">
-
-    <!-- Brand -->
-    <a href="{{ url_for('pages.home') }}" class="nav-brand">
+    <a href="/" class="nav-brand">
       <span class="nav-brand-icon">♠</span>
       <span class="nav-brand-text">
         EquiEdge AI
         <span class="nav-brand-sub">Poker Engine v2 · AI Coach Mode</span>
       </span>
     </a>
-
-    <!-- Links -->
-    <div class="nav-links">
-      <a href="{{ url_for('pages.home') }}"
-         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a>
-
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.app_page') }}"
-         class="nav-engine-btn {% if request.endpoint == 'pages.app_page' %}active{% endif %}">
-        ⚡ Engine
-      </a>
-      {% endif %}
-
-      <a href="{{ url_for('pages.pricing') }}"
-         class="{% if request.endpoint == 'pages.pricing' %}active{% endif %}">Pricing</a>
-      <a href="{{ url_for('pages.contact') }}"
-         class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a>
-
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.settings') }}"
-         class="{% if request.endpoint == 'pages.settings' %}active{% endif %}">Settings</a>
-      {% endif %}
-    </div>
-
-    <!-- User area -->
     <div class="nav-user">
-      {% if current_user.is_authenticated %}
-
-        {% if current_user.is_admin %}
-          <a href="{{ url_for('admin.dashboard') }}" class="nav-admin-link">Admin</a>
-        {% endif %}
-
-        <!-- Plan badge -->
-        {% set tier = current_user.get_plan_tier() %}
-        {% set ftier = current_user.get_feature_tier() %}
-        {% if tier == 'pro' %}
-          <span class="plan-badge plan-pro">Pro</span>
-        {% elif tier == 'beginner' %}
-          <span class="plan-badge plan-beginner">Beginner</span>
-        {% elif tier == 'credits' %}
-          <span class="plan-badge plan-credits">Credits</span>
-        {% else %}
-          <span class="plan-badge plan-none">Free</span>
-        {% endif %}
-
-        <!-- Credits chip (show when no active plan) -->
-        {% if not current_user.has_active_plan() %}
-          <span class="credits-chip" id="navCreditsChip"
-                {% if current_user.credits == 0 %}style="display:none"{% endif %}>
-            <b id="navCreditsCount">{{ current_user.credits }}</b> cr
-          </span>
-        {% endif %}
-
-        <!-- Plan status label -->
-        {% if ftier == 'pro' %}
-          <span class="nav-plan-status nav-plan-status-pro">⚡ Full Access</span>
-        {% elif tier == 'credits' %}
-          <span class="nav-plan-status nav-plan-status-credits">
-            <span id="headerCreditsCount">{{ current_user.credits }}</span> remaining
-          </span>
-        {% endif %}
-
-        <!-- Engine status -->
-        <div class="nav-engine-status">
-          <div class="status-dot"></div>
-          Engine Ready
-        </div>
-
-        <span class="nav-username">{{ current_user.username }}</span>
-
-        <a href="{{ url_for('auth.logout') }}" class="btn-nav btn-nav-ghost">Logout</a>
-
-      {% else %}
-        <a href="{{ url_for('auth.login') }}"    class="btn-nav btn-nav-ghost">Login</a>
-        <a href="{{ url_for('auth.register') }}" class="btn-nav btn-nav-primary">Get Started</a>
-      {% endif %}
+      <div class="nav-engine-status">
+        <div class="status-dot"></div>
+        Engine Ready
+      </div>
     </div>
-
-    <!-- Hamburger (mobile only) -->
-    <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
-      <span class="hb-line"></span>
-      <span class="hb-line"></span>
-      <span class="hb-line"></span>
-    </button>
-
   </div>
-
-  <!-- ── Mobile dropdown menu ──────────────────────────────── -->
-  <div class="mobile-menu" id="mobileMenu">
-    <div class="mobile-menu-links">
-      <a href="{{ url_for('pages.home') }}"
-         class="{% if request.endpoint == 'pages.home' %}active{% endif %}">Home</a>
-
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.app_page') }}"
-         class="mm-engine-btn {% if request.endpoint == 'pages.app_page' %}active{% endif %}">
-        ⚡ Engine
-      </a>
-      {% endif %}
-
-      <a href="{{ url_for('pages.pricing') }}"
-         class="{% if request.endpoint == 'pages.pricing' %}active{% endif %}">Pricing</a>
-      <a href="{{ url_for('pages.contact') }}"
-         class="{% if request.endpoint == 'pages.contact' %}active{% endif %}">Contact</a>
-
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('pages.settings') }}"
-         class="{% if request.endpoint == 'pages.settings' %}active{% endif %}">Settings</a>
-      {% endif %}
-    </div>
-
-    <div class="mobile-menu-divider"></div>
-
-    {% if current_user.is_authenticated %}
-      <div class="mobile-menu-badges">
-        {% set tier = current_user.get_plan_tier() %}
-        {% if tier == 'pro' %}
-          <span class="plan-badge plan-pro">Pro</span>
-        {% elif tier == 'beginner' %}
-          <span class="plan-badge plan-beginner">Beginner</span>
-        {% elif tier == 'credits' %}
-          <span class="plan-badge plan-credits">Credits</span>
-        {% else %}
-          <span class="plan-badge plan-none">Free</span>
-        {% endif %}
-        {% if not current_user.has_active_plan() and current_user.credits > 0 %}
-          <span class="credits-chip"><b>{{ current_user.credits }}</b> cr</span>
-        {% endif %}
-      </div>
-      <div class="mobile-menu-user">
-        <span class="mobile-menu-username">{{ current_user.username }}</span>
-        {% if current_user.is_admin %}
-          <a href="{{ url_for('admin.dashboard') }}" class="nav-admin-link">Admin</a>
-        {% endif %}
-        <a href="{{ url_for('auth.logout') }}" class="btn-nav btn-nav-ghost">Logout</a>
-      </div>
-    {% else %}
-      <div class="mobile-menu-auth">
-        <a href="{{ url_for('auth.login') }}"    class="mm-login">Login</a>
-        <a href="{{ url_for('auth.register') }}" class="mm-register">Get Started</a>
-      </div>
-    {% endif %}
-  </div>
-
 </nav>
 {% endblock navbar %}
 
@@ -197,41 +55,12 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-brand">♠ EquiEdge AI</div>
-    <div class="footer-links">
-      <a href="{{ url_for('pages.pricing') }}">Pricing</a>
-      <a href="{{ url_for('pages.contact') }}">Contact</a>
-      <a href="{{ url_for('pages.terms') }}">Terms</a>
-      <a href="{{ url_for('pages.privacy') }}">Privacy</a>
-      <a href="{{ url_for('pages.legal') }}">Legal</a>
-    </div>
     <div class="footer-copy">
-      &copy; 2026 EquiEdge AI. For scenario analysis only — not a substitute for
-      real-time table judgment, bankroll discipline, or professional advice.
+      For scenario analysis only — not a substitute for real-time table judgment.
     </div>
   </div>
 </footer>
 {% endblock footer %}
 
-<script>
-  (function () {
-    var btn  = document.getElementById('navHamburger');
-    var menu = document.getElementById('mobileMenu');
-    if (btn && menu) {
-      btn.addEventListener('click', function () {
-        var open = menu.classList.toggle('open');
-        btn.classList.toggle('open', open);
-        btn.setAttribute('aria-expanded', open);
-      });
-      // Close menu when a link inside it is clicked
-      menu.addEventListener('click', function (e) {
-        if (e.target.tagName === 'A') {
-          menu.classList.remove('open');
-          btn.classList.remove('open');
-          btn.setAttribute('aria-expanded', 'false');
-        }
-      });
-    }
-  })();
-</script>
 </body>
 </html>
