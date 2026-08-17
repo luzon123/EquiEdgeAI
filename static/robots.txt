@@ -3,3 +3,10 @@ Allow: /
 Disallow: /admin/
 Disallow: /checkout/
 Disallow: /decision
+Disallow: /app
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /settings
+Disallow: /health
