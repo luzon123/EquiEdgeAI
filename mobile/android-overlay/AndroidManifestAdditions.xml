@@ -1,0 +1,24 @@
+<!--
+  Merge these entries into the RN-generated android/app/src/main/AndroidManifest.xml
+  (inside the existing <manifest> and <application> tags respectively).
+  See mobile/android-overlay/README.md for the full setup sequence.
+-->
+
+<!-- Inside <manifest ...> -->
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+<!-- Required on API 33+ to show the foreground-service notification. -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+<!-- Inside <application ...> -->
+<activity
+    android:name="ai.equiedge.mobile.overlay.OverlayPermissionActivity"
+    android:exported="false"
+    android:theme="@style/Theme.AppCompat.Light" />
+
+<service
+    android:name="ai.equiedge.mobile.overlay.OverlayService"
+    android:exported="false"
+    android:foregroundServiceType="mediaProjection" />

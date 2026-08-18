@@ -22,7 +22,7 @@ except ImportError:
 
 from flask import Flask, render_template
 
-from routes import api_bp
+from routes import api_bp, mobile_bp
 from routes.analyze_image import analyze_image_bp
 from extensions import csrf, limiter
 from utils.logging_setup import setup_logging, get_logger
@@ -50,6 +50,7 @@ def create_app() -> Flask:
     # ── Blueprints ───────────────────────────────────────────────────────
     app.register_blueprint(api_bp)
     app.register_blueprint(analyze_image_bp)
+    app.register_blueprint(mobile_bp)
 
     # ── Root route — serve the engine UI directly ────────────────────────
     @app.route("/")

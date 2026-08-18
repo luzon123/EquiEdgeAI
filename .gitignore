@@ -38,6 +38,16 @@ build/
 dist/
 *.egg-info/
 
+# 🔹 Mobile (React Native)
+mobile/node_modules/
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/.metro-health-check*
+*.jsbundle
+
 # 🔹 Secrets / keys (critical!)
 secrets.json
 config.json

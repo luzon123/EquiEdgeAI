@@ -41,6 +41,10 @@ Key detection rules:
 
 7. BOARD_CARDS - The shared community cards in the middle of the table (if any) — flop/turn/river. If there are no board cards yet (preflop stage) - return an empty array. Do NOT confuse this with the small history tags shown in the top-left corner of the screen (the green/brown tags) — these are NOT the current board cards.
 
+8. CONFIDENCE - Rate your own certainty as a number from 0.0 to 1.0:
+   - "hero_cards_confidence" - how certain you are of BOTH my_hand cards (rank AND suit). 1.0 = perfectly clear and unobstructed; 0.5 = partially obscured, glare, or low resolution; 0.0 = could not read them at all.
+   - "overall_confidence" - your overall certainty in the full JSON response as a whole, accounting for every field above. Use a LOW value (below 0.3) whenever the screenshot is blurry, cropped, mid-transition/animation, or a UI element is covering part of the table.
+
 If any field is unclear or cannot be identified with certainty from the image, return null for it — do not guess.
 
 Return ONLY JSON in the following format, with no additional text:
@@ -55,7 +59,9 @@ Return ONLY JSON in the following format, with no additional text:
   },
   "my_hand": ["<card1>", "<card2>"],
   "my_stack": <number>,
-  "board_cards": ["<card1>", "<card2>", ...]
+  "board_cards": ["<card1>", "<card2>", ...],
+  "hero_cards_confidence": <number 0.0-1.0>,
+  "overall_confidence": <number 0.0-1.0>
 }
 """
 
