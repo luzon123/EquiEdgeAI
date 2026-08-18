@@ -65,6 +65,10 @@ class VisionGameState:
     hero_stack_confidence:  float           = 0.0
     hero_seat:              int | None      = None
 
+    # -- Hero position (engine vocabulary: BTN/SB/BB/UTG/UTG+1/UTG+2/MP/HJ/CO)
+    hero_position:              str | None  = None
+    hero_position_confidence:   float       = 0.0
+
     # -- Positions -----------------------------------------------------------
     dealer_position:                int | None  = None
     dealer_position_confidence:     float       = 0.0
@@ -153,6 +157,8 @@ class VisionGameState:
             hero_stack             = data.get("hero_stack"),
             hero_stack_confidence  = float(data.get("hero_stack_confidence") or 0.0),
             hero_seat              = data.get("hero_seat"),
+            hero_position          = data.get("hero_position"),
+            hero_position_confidence = float(data.get("hero_position_confidence") or 0.0),
             dealer_position        = data.get("dealer_position"),
             dealer_position_confidence       = float(data.get("dealer_position_confidence") or 0.0),
             small_blind_position             = data.get("small_blind_position"),
@@ -193,6 +199,8 @@ class VisionGameState:
             "hero_stack":                     self.hero_stack,
             "hero_stack_confidence":          self.hero_stack_confidence,
             "hero_seat":                      self.hero_seat,
+            "hero_position":                  self.hero_position,
+            "hero_position_confidence":       self.hero_position_confidence,
             "dealer_position":                self.dealer_position,
             "dealer_position_confidence":     self.dealer_position_confidence,
             "small_blind_position":           self.small_blind_position,

@@ -3,7 +3,10 @@
     "allow": [
       "Bash(python -c \"from routes import api_bp, pages_bp; from services.decision_engine import decide_action; from services.equity import simulate_equity; print\\('All imports OK'\\)\")",
       "Bash(pip install:*)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(git -C . log --oneline -10)",
+      "Bash(git -C . diff --stat)",
+      "Bash(python -m unittest tests.test_decision_engine -v)"
     ]
   }
 }

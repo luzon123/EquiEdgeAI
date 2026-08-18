@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from extensions import limiter
+from extensions import csrf, limiter
 
 from config import (
     DEFAULT_SIMULATIONS, MIN_SIMULATIONS, MAX_SIMULATIONS, QUICK_SIMULATIONS,
@@ -18,7 +18,7 @@ from services.board_analysis import analyze_board_texture
 from services.hand_classification import classify_hero_hand
 from services.blockers import calculate_blocker_score
 from services.ranges import estimate_range_advantage
-from services.ev import calculate_spr, calculate_pot_odds
+from services.ev import calculate_spr, calculate_pot_odds, effective_call
 from services.equity import simulate_equity
 from services.exploit_engine import compute_population_adjustment_factor, get_profile
 from services.decision_engine import (
@@ -43,6 +43,7 @@ logger = get_logger()
 # POST /decision
 # ---------------------------------------------------------------------------
 @api_bp.route("/decision", methods=["POST"])
+@csrf.exempt
 @limiter.limit("120 per minute")
 def decision_endpoint():
     # ── Parse request ─────────────────────────────────────────────────────
@@ -107,6 +108,17 @@ def decision_endpoint():
             num_simulations = max(MIN_SIMULATIONS, min(MAX_SIMULATIONS, int(raw_sims)))
 
     # ── Shared computation ────────────────────────────────────────────────
+    # Engine convention: `pot` is the TOTAL pot with any facing bet already
+    # committed.  bet > pot is impossible under that convention, so such a
+    # payload proves the client passed the pot BEFORE villain's bet —
+    # normalise it once here so every downstream formula sees one convention.
+    if bet > pot:
+        logger.info(
+            "Pot convention normalised: pot %.1f excluded the facing bet %.1f "
+            "— using total pot %.1f.", pot, bet, pot + bet,
+        )
+        pot += bet
+
     stage = detect_stage(board)
 
     # Effective stack: SPR should use min(hero, villain) so a short villain
@@ -137,11 +149,15 @@ def decision_endpoint():
         blockers        = calculate_blocker_score(hand, board, texture)
         range_advantage = estimate_range_advantage(position, board, stage, texture)
         spr             = calculate_spr(eff_stack, pot)   # effective stack, not hero stack
-        pot_odds        = calculate_pot_odds(pot, bet)
+        # Pot odds on hero's REAL price: an oversized bet is only callable up
+        # to hero's stack, and the uncallable excess isn't in hero's pot.
+        odds_pot, odds_bet = effective_call(pot, bet, stack)
+        pot_odds        = calculate_pot_odds(odds_pot, odds_bet)
 
         win_rate = simulate_equity(
             hand, board, players, position, num_simulations, stage, texture,
             is_3bet_pot=is_3bet_pot, villain_position=villain_position,
+            first_in=(bet == 0),
         )
 
         # On a complete board, the nuts hand wins every possible runout by

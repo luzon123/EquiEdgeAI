@@ -9,6 +9,8 @@ remaining deck.  This avoids the weighted-range bias that causes large errors
 from __future__ import annotations
 
 import random
+from bisect import bisect_left
+from itertools import accumulate
 from itertools import combinations as _combinations
 from typing import Optional
 
@@ -21,6 +23,15 @@ from services.board_analysis import analyze_board_texture
 from services.ranges import build_weighted_combo_pool, weighted_deal_opponent_hand
 
 logger = get_logger()
+
+# treys Card.new parses the card string on every call; with ~10 conversions
+# per simulation that dominated runtime.  The 52 ints are immutable — compute
+# them once at import.
+_CARD_INT: dict = {c: Card.new(c) for c in get_full_deck()}
+
+# Evaluator builds its lookup table in __init__ and is read-only afterwards —
+# one shared instance serves all requests/threads.
+_EVALUATOR = Evaluator()
 
 
 # ---------------------------------------------------------------------------
@@ -36,13 +47,13 @@ def _river_equity_exact(hand: list, board: list, num_opponents: int) -> float:
 
     Card removal is exact: the deck excludes all hero cards and all board cards.
     """
-    evaluator  = Evaluator()
+    evaluator  = _EVALUATOR
     used_base  = set(hand + board)
     deck       = [c for c in get_full_deck() if c not in used_base]
-    board_ints = [Card.new(c) for c in board]
+    board_ints = [_CARD_INT[c] for c in board]
 
     try:
-        hero_score = evaluator.evaluate(board_ints, [Card.new(c) for c in hand])
+        hero_score = evaluator.evaluate(board_ints, [_CARD_INT[c] for c in hand])
     except Exception:
         return 0.5
 
@@ -51,7 +62,7 @@ def _river_equity_exact(hand: list, board: list, num_opponents: int) -> float:
         wins = ties = total = 0
         for opp in _combinations(deck, 2):
             try:
-                opp_score = evaluator.evaluate(board_ints, [Card.new(c) for c in opp])
+                opp_score = evaluator.evaluate(board_ints, [_CARD_INT[c] for c in opp])
             except Exception:
                 continue
             if   hero_score < opp_score:  wins += 1
@@ -80,7 +91,7 @@ def _river_equity_exact(hand: list, board: list, num_opponents: int) -> float:
             opp = sampled[2 * i : 2 * i + 2]
             try:
                 opp_scores.append(
-                    evaluator.evaluate(board_ints, [Card.new(c) for c in opp])
+                    evaluator.evaluate(board_ints, [_CARD_INT[c] for c in opp])
                 )
             except Exception:
                 ok = False
@@ -110,53 +121,87 @@ def simulate_equity(
     texture: Optional[dict] = None,
     is_3bet_pot: bool = False,
     villain_position: Optional[str] = None,
+    first_in: bool = False,
 ) -> float:
     if texture is None:
         texture = analyze_board_texture(board)
 
     num_opponents = num_players - 1
 
+    # Preflop FIRST-IN (no bet to call): an open realistically plays against
+    # the one or two players who continue — everyone else folds and their
+    # cards are dead.  Simulating all N-1 opponents with live range hands
+    # crushed open-decision equity (e.g. AQo "12%" at a 6-max table) and made
+    # the engine refuse legitimate opens.  Cap at 2 live opponents.
+    if first_in and stage == "preflop":
+        num_opponents = min(num_opponents, 2)
+
     # ── Complete board: use exact / uniform computation, not weighted MC ────
     if len(board) == 5:
         return _river_equity_exact(hand, board, num_opponents)
 
-    # ── Incomplete board: weighted Monte Carlo (existing logic) ─────────────
-    evaluator     = Evaluator()
+    # ── Incomplete board: weighted Monte Carlo ─────────────────────────────
+    evaluator     = _EVALUATOR
     full_deck     = get_full_deck()
     weighted_pool = build_weighted_combo_pool(position, board, stage, texture, hand,
                                               is_3bet_pot=is_3bet_pot,
                                               villain_position=villain_position)
     base_known: set = set(hand + board)
+
+    if not weighted_pool:
+        logger.warning("Empty opponent combo pool; defaulting equity to 0.5.")
+        return 0.5
+
+    # Precompute once: sampling structures and int conversions.  Weighted
+    # rejection sampling from the cumulative distribution is statistically
+    # identical to filtering the pool per draw and renormalising (rejection
+    # sampling conditions on "no card overlap"), but O(log n) per attempt
+    # instead of O(n) per draw.
+    combos  = list(weighted_pool.keys())
+    cum_w   = list(accumulate(weighted_pool[c] for c in combos))
+    total_w = cum_w[-1]
+
+    hero_ints    = [_CARD_INT[c] for c in hand]
+    board_prefix = [_CARD_INT[c] for c in board]
+    cards_needed = 5 - len(board)
+    n_combos     = len(combos)
+
+    def _draw_opponent(used: set) -> Optional[tuple]:
+        for _ in range(60):
+            i = bisect_left(cum_w, random.random() * total_w)
+            c1, c2 = combos[i if i < n_combos else n_combos - 1]
+            if c1 not in used and c2 not in used:
+                return (c1, c2)
+        # Pathological overlap (deep multiway) — exact filtered fallback.
+        return weighted_deal_opponent_hand(weighted_pool, used)
+
     wins = ties = valid_runs = 0
 
     for _ in range(num_simulations):
         used: set = set(base_known)
-        opponent_hands: list = []
+        opp_ints: list = []
         sim_ok = True
 
         for _opp in range(num_opponents):
-            opp_hand = weighted_deal_opponent_hand(weighted_pool, used)
+            opp_hand = _draw_opponent(used)
             if opp_hand is None:
                 sim_ok = False; break
-            opponent_hands.append(opp_hand)
             used.add(opp_hand[0]); used.add(opp_hand[1])
+            opp_ints.append([_CARD_INT[opp_hand[0]], _CARD_INT[opp_hand[1]]])
 
         if not sim_ok:
             continue
 
-        remaining    = [c for c in full_deck if c not in used]
-        cards_needed = 5 - len(board)
+        remaining = [c for c in full_deck if c not in used]
         if cards_needed > len(remaining):
             continue
 
-        full_board = board + random.sample(remaining, cards_needed)
         try:
-            board_ints = [Card.new(c) for c in full_board]
-            hero_score = evaluator.evaluate(board_ints, [Card.new(c) for c in hand])
-            opp_scores = [
-                evaluator.evaluate(board_ints, [Card.new(c) for c in opp])
-                for opp in opponent_hands
+            board_ints = board_prefix + [
+                _CARD_INT[c] for c in random.sample(remaining, cards_needed)
             ]
+            hero_score = evaluator.evaluate(board_ints, hero_ints)
+            opp_scores = [evaluator.evaluate(board_ints, oi) for oi in opp_ints]
             best_opp = min(opp_scores) if opp_scores else float("inf")
             if   hero_score < best_opp:  wins += 1
             elif hero_score == best_opp: ties += 1

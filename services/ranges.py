@@ -14,6 +14,9 @@ from config import (
     PREMIUM_HANDS, STRONG_HANDS, SPECULATIVE_HANDS,
 )
 
+# Shared read-only evaluator (treys builds its lookup table in __init__).
+_EVALUATOR = Evaluator()
+
 # 3-bet/4-bet callers/shippers: essentially premiums + top strong hands only
 _3BET_RANGE: frozenset = frozenset(PREMIUM_HANDS | STRONG_HANDS)
 
@@ -189,8 +192,9 @@ def build_weighted_combo_pool(
         if villain_position else _AVERAGE_VILLAIN_RANGE
     )
 
-    # Create evaluator once for board-strength weighting (only needed post-flop)
-    evaluator = Evaluator() if len(board) >= 3 else None
+    # Shared evaluator for board-strength weighting (only needed post-flop);
+    # treys Evaluator is read-only after construction, so reuse is safe.
+    evaluator = _EVALUATOR if len(board) >= 3 else None
 
     for hand_str in range_hands:
         tier_w = _stage_weight_decay(hand_str, stage)
@@ -243,7 +247,7 @@ def estimate_range_advantage(
 ) -> float:
     pos_tightness = {
         "UTG": 0.90, "UTG+1": 0.87, "UTG+2": 0.83,
-        "MP": 0.75, "CO": 0.55,
+        "MP": 0.75, "HJ": 0.65, "CO": 0.55,
         "BTN": 0.35, "SB": 0.50, "BB": 0.40,
     }.get(position, 0.55)
 

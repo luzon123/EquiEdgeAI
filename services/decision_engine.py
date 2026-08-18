@@ -10,8 +10,10 @@ from services.ev import (
     calculate_call_ev,
     calculate_raise_ev,
     compute_raise_size,
+    effective_call,
     evaluate_bluff_catch,
     get_equity_realization,
+    legalize_raise_size,
     should_bluff,
     spr_aggression_factor,
     spr_commitment_threshold,
@@ -133,6 +135,11 @@ def generate_explanation(
 ) -> str:
     action_type = action.split()[0]
 
+    if action_type == "CHECK":
+        if hand_class in ("nuts", "near_nuts"):
+            return "Check: trapping — raising is not clearly higher EV here"
+        return f"Check: realize equity for free ({win_rate:.0%}); betting is not +EV"
+
     if action_type == "FOLD":
         if stage == "river" and win_rate < 0.35:
             return "Fold: river — population under-bluffs, negative EV call"
@@ -199,6 +206,11 @@ def decide_action(
     # --------------------------------------------------------------------------
 
     in_position = position in {"BTN", "CO"}
+    facing_bet  = bet > 0
+
+    # Side-pot correction: hero can only call up to their stack; the
+    # uncallable excess of an oversized bet is not part of hero's pot.
+    pot, bet = effective_call(pot, bet, stack)
 
     pot_odds = calculate_pot_odds(pot, bet)
     wetness  = texture.get("wetness", 0.5)
@@ -223,15 +235,43 @@ def decide_action(
     else:
         call_ev = calculate_call_ev(win_rate, pot, bet)
 
+    # ── All-in call: villain's (clamped) bet covers hero's entire stack ────
+    # No raise exists in this state — the only options are calling all-in or
+    # folding.  All remaining cards get dealt, so raw equity is fully
+    # realized: call_ev needs no realization discount and no implied odds.
+    if bet > 0 and stack <= bet:
+        breakdown_ai = {
+            "p_fold": 0.0, "p_call": 1.0, "p_reraise": 0.0,
+            "ev_fold": round(pot, 2), "ev_call": round(call_ev, 2),
+            "ev_reraise_response": 0.0,
+            "realization": 1.0, "realized_wr": round(win_rate, 4),
+            "all_in_call": True,
+        }
+        if call_ev > 0:
+            return "CALL", call_ev, call_ev, 0.0, breakdown_ai
+        if stage in ("flop", "turn", "river") and hand_class not in ("nuts", "near_nuts"):
+            should_catch, _catch_ev, catch_reason = evaluate_bluff_catch(
+                win_rate, pot, bet, stage, num_players, hand_class,
+                blockers, texture, range_advantage, line,
+            )
+            if should_catch:
+                return "CALL", call_ev, call_ev, 0.0, {
+                    **breakdown_ai, "bluff_catch": True, "catch_reason": catch_reason,
+                }
+        return "FOLD", call_ev, call_ev, 0.0, breakdown_ai
+
     thresholds = adaptive_thresholds(
         num_players, spr, texture, hand_class, position, range_advantage,
         in_position=in_position,
     )
 
-    # Baseline raise sizing + 3-outcome EV (with profile fold-equity scaling)
+    # Baseline raise sizing + 3-outcome EV (with profile fold-equity scaling).
+    # Every recommended size passes through legalize_raise_size so the engine
+    # can never emit a raise below the legal minimum (2x the facing bet) or
+    # above hero's stack.
     raise_size          = compute_raise_size(pot, stack, stage, hand_class, texture,
                                               is_bluff=False, spr=spr)
-    raise_size          = max(1, min(round(raise_size * value_size_mult), round(stack)))
+    raise_size          = legalize_raise_size(raise_size * value_size_mult, bet, stack)
     raise_ev, breakdown = calculate_raise_ev(
         win_rate, pot, bet, raise_size, stage, num_players, position, hand_class, texture,
         fold_eq_mult=fold_eq_mult, in_position=in_position, has_initiative=has_initiative,
@@ -249,11 +289,14 @@ def decide_action(
         overbet_size          = compute_raise_size(pot, stack, stage, hand_class, texture,
                                                     is_bluff=(hand_class in ("air", "strong_draw", "combo_draw")),
                                                     spr=spr, use_overbet=True)
+        overbet_size          = legalize_raise_size(overbet_size, bet, stack)
         overbet_ev, ob_brkdwn = calculate_raise_ev(
             win_rate, pot, bet, overbet_size, stage, num_players, position, hand_class, texture,
             fold_eq_mult=fold_eq_mult, in_position=in_position, has_initiative=has_initiative,
         )
-        if overbet_ev > raise_ev * 1.04:
+        # Additive margin of 4% of the pot — a multiplicative margin inverts
+        # its meaning when raise_ev is negative.
+        if overbet_ev > raise_ev + 0.04 * pot:
             use_overbet = True
             raise_size  = overbet_size
             raise_ev    = overbet_ev
@@ -270,10 +313,21 @@ def decide_action(
     # -----------------------------------------------------------------------
     # Helper closures
     # -----------------------------------------------------------------------
+    def _should_bluff() -> bool:
+        # Single gate for every bluff decision so the profile bluff-frequency
+        # multiplier (e.g. 0.25 vs a fish) and the facing-bet damping apply
+        # uniformly — previously most call sites silently dropped both.
+        return should_bluff(stage, num_players, position, texture,
+                            hand_class, blockers, range_advantage, spr, line,
+                            bluff_freq_mult=bluff_freq_mult,
+                            in_position=in_position,
+                            has_initiative=has_initiative,
+                            facing_bet=facing_bet)
+
     def _raise_action(hc: str, ob: bool = False) -> tuple[str, float, float, float, dict]:
         rs          = compute_raise_size(pot, stack, stage, hc, texture,
                                          is_bluff=False, spr=spr, use_overbet=ob)
-        rs          = max(1, min(round(rs * value_size_mult), round(stack)))
+        rs          = legalize_raise_size(rs * value_size_mult, bet, stack)
         rev, brkdwn = calculate_raise_ev(win_rate, pot, bet, rs, stage,
                                           num_players, position, hc, texture,
                                           fold_eq_mult=fold_eq_mult,
@@ -284,6 +338,7 @@ def decide_action(
     def _bluff_action(hc: str, ob: bool = False) -> tuple[str, float, float, float, dict]:
         bs          = compute_raise_size(pot, stack, stage, hc, texture,
                                          is_bluff=True, spr=spr, use_overbet=ob)
+        bs          = legalize_raise_size(bs, bet, stack)
         bev, brkdwn = calculate_raise_ev(win_rate, pot, bet, bs, stage,
                                           num_players, position, hc, texture,
                                           fold_eq_mult=fold_eq_mult,
@@ -292,7 +347,8 @@ def decide_action(
         return f"BLUFF {bs}", call_ev, bev, brkdwn["p_fold"], brkdwn
 
     def _call() -> tuple[str, float, float, float, dict]:
-        return "CALL", call_ev, raise_ev, fold_eq, breakdown
+        # With no bet facing, "continuing passively" is a check, not a call.
+        return ("CALL" if bet > 0 else "CHECK"), call_ev, raise_ev, fold_eq, breakdown
 
     def _fold() -> tuple[str, float, float, float, dict]:
         # When there is no bet facing hero, folding means checking behind —
@@ -318,15 +374,13 @@ def decide_action(
     # NUTS / NEAR-NUTS
     # -----------------------------------------------------------------------
     if hand_class in ("nuts", "near_nuts"):
-        # Slow-play trap: wet multi-way board gives draws plenty of combos to
-        # stack off against us — let them catch up and build the pot naturally.
-        slow_play = (
-            num_players >= 3
-            and wetness >= 0.60
-            and spr >= 4.0
-            and stage in ("flop", "turn")
-        )
-        if not slow_play and (spr <= 3.0 or raise_ev > call_ev):
+        # Fast-play by default.  The previous "slow-play on wet multiway
+        # boards" rule had the theory inverted: wet multiway boards are
+        # exactly where the nuts must bet — draws pay raises off AND can
+        # outdraw us; giving free cards there is maximally -EV.  Trapping is
+        # only ever considered implicitly when raise EV falls below call EV
+        # (e.g. vs a bettor whose range folds out to aggression).
+        if spr <= 3.0 or raise_ev > call_ev:
             return _raise_action(hand_class, use_overbet)
         return _call()
 
@@ -334,10 +388,28 @@ def decide_action(
     # STRONG / MEDIUM / WEAK MADE HANDS
     # -----------------------------------------------------------------------
     if hand_class in ("strong_made", "medium_made", "weak_made", "strong", "medium"):
-        # Thin value bet: medium-made hands on river that are slightly ahead.
-        # EV calculation filters out marginal spots — no board-type gate needed.
+        # Preflop first-in: open-raise or check — never limp by default.
+        # win_rate here is capped-opponent equity (see simulate_equity), so a
+        # position-loosened threshold tracks standard open charts: TT/AQo
+        # clear it everywhere, small pairs and weak broadways only from late
+        # position, junk checks its option or folds.
+        # Calibrated against this engine's own range model (capped-opponent
+        # equity vs the top-20% average villain range): AA .73, TT .38,
+        # AQo .33, KQs .29, AJo .27, 22 .26, KTo .23, Q9o .21, 72o .17.
+        # UTG ≈ .315 admits TT+/99/AQo; BTN ≈ .24 adds small pairs and
+        # medium broadways; offsuit junk never clears any position.
+        if stage == "preflop" and bet == 0:
+            open_threshold = 0.315 - pos_factor * 0.075
+            if win_rate >= open_threshold:
+                return _raise_action(hand_class)
+            return _fold()   # labelled CHECK (no bet facing)
+
+        # Thin value BET: medium-made hands first-in on the river that are
+        # slightly ahead.  Only when checked to (bet == 0) — thin value
+        # raising INTO a river bet is spew versus value-heavy betting ranges.
         thin_value = (
             stage == "river"
+            and bet == 0
             and hand_class in ("medium_made", "strong_made")
             and 0.52 <= win_rate <= 0.68
             and num_players == 2
@@ -345,6 +417,7 @@ def decide_action(
         if thin_value:
             tv_size          = compute_raise_size(pot, stack, stage, hand_class, texture,
                                                    is_bluff=False, spr=spr, thin_value=True)
+            tv_size          = legalize_raise_size(tv_size, bet, stack)
             tv_ev, tv_brkdwn = calculate_raise_ev(win_rate, pot, bet, tv_size, stage,
                                                     num_players, position, hand_class, texture,
                                                     fold_eq_mult=fold_eq_mult,
@@ -360,11 +433,20 @@ def decide_action(
         # can overstate a weak hand's edge once villain has already bet.
         # Continuing with a weak_made hand facing a bet belongs to the
         # bluff-catch path above (range-aware) or the fold below, not here.
-        value_raise_eligible = not (bet > 0 and hand_class == "weak_made")
+        #
+        # River raises versus a bet are gated to near-nuts+ (handled in the
+        # nuts branch above): the population model itself says river bets are
+        # heavily value-weighted, so raising one-pair-calibre "strong_made"
+        # (e.g. TPTK) into a river bet is dominated — call instead.
+        value_raise_eligible = (
+            not (bet > 0 and hand_class == "weak_made")
+            and not (bet > 0 and stage == "river")
+        )
 
         if value_raise_eligible and win_rate >= thresholds["raise_threshold"]:
             rs          = compute_raise_size(pot, stack, stage, hand_class, texture,
                                               is_bluff=False, spr=spr)
+            rs          = legalize_raise_size(rs, bet, stack)
             rev, brkdwn = calculate_raise_ev(win_rate, pot, bet, rs, stage,
                                               num_players, position, hand_class, texture,
                                               fold_eq_mult=fold_eq_mult,
@@ -398,11 +480,7 @@ def decide_action(
         if (range_advantage > 0.20
                 and blockers.get("blocker_score", 0) >= 0.30
                 and texture.get("wetness", 1.0) <= 0.55
-                and should_bluff(stage, num_players, position, texture,
-                                  hand_class, blockers, range_advantage, spr, line,
-                                  bluff_freq_mult=bluff_freq_mult,
-                                  in_position=in_position,
-                                  has_initiative=has_initiative)):
+                and _should_bluff()):
             return _raise_action(hand_class)
 
         return _fold()
@@ -415,9 +493,7 @@ def decide_action(
         # Even facing a bet, raise as a semi-bluff — 15 outs gives enough
         # equity to semi-bluff profitably in most scenarios.
         if stage == "preflop" and bet == 0:
-            if should_bluff(stage, num_players, position, texture,
-                            hand_class, blockers, range_advantage, spr, line,
-                            in_position=in_position, has_initiative=has_initiative):
+            if _should_bluff():
                 return _raise_action(hand_class)
             return _fold()
 
@@ -426,6 +502,7 @@ def decide_action(
             # OR the implied odds justify continuing.
             sr           = compute_raise_size(pot, stack, stage, hand_class, texture,
                                               is_bluff=True, spr=spr)
+            sr           = legalize_raise_size(sr, bet, stack)
             sev, sbrkdwn = calculate_raise_ev(win_rate, pot, bet, sr, stage,
                                                   num_players, position, hand_class, texture,
                                                   fold_eq_mult=fold_eq_mult,
@@ -433,18 +510,14 @@ def decide_action(
                                                   has_initiative=has_initiative)
             if (sev > call_ev * 1.01
                     and num_players <= 3
-                    and should_bluff(stage, num_players, position, texture,
-                                     hand_class, blockers, range_advantage, spr, line,
-                                     in_position=in_position, has_initiative=has_initiative)):
+                    and _should_bluff()):
                 return f"RAISE {sr}", call_ev, sev, sbrkdwn["p_fold"], sbrkdwn
             # Even without fold equity, the raw equity justifies calling
             if win_rate >= pot_odds * 0.80 or call_ev > -bet * 0.10:
                 return _call()
 
         # River: missed combo draw — strong bluff candidate with remaining equity
-        if should_bluff(stage, num_players, position, texture,
-                         hand_class, blockers, range_advantage, spr, line,
-                         in_position=in_position, has_initiative=has_initiative):
+        if _should_bluff():
             ob_bluff = (blockers.get("blocker_score", 0) >= 0.40 and use_overbet)
             return _bluff_action("combo_draw", ob=ob_bluff)
         return _fold()
@@ -462,15 +535,14 @@ def decide_action(
             # Preflop first-in: suited connectors should open-raise or fold,
             # not limp (bet=0 → pot_odds=0 → implied_wr>=0 always True → limp).
             if stage == "preflop" and bet == 0:
-                if should_bluff(stage, num_players, position, texture,
-                                hand_class, blockers, range_advantage, spr, line,
-                                in_position=in_position, has_initiative=has_initiative):
+                if _should_bluff():
                     return _raise_action(hand_class)
                 return _fold()
 
             if implied_wr >= pot_odds:
                 sr           = compute_raise_size(pot, stack, stage, hand_class, texture,
                                                    is_bluff=True, spr=spr)
+                sr           = legalize_raise_size(sr, bet, stack)
                 sev, sbrkdwn = calculate_raise_ev(win_rate, pot, bet, sr, stage,
                                                    num_players, position, hand_class, texture,
                                                    fold_eq_mult=fold_eq_mult,
@@ -479,18 +551,13 @@ def decide_action(
                 if (sev > call_ev * 1.02
                         and pos_factor >= 0.35
                         and num_players <= 3
-                        and should_bluff(stage, num_players, position, texture,
-                                          hand_class, blockers, range_advantage, spr, line,
-                                          in_position=in_position,
-                                          has_initiative=has_initiative)):
+                        and _should_bluff()):
                     return f"RAISE {sr}", call_ev, sev, sbrkdwn["p_fold"], sbrkdwn
                 if call_ev > 0 or implied_wr >= pot_odds:
                     return _call()
 
         # River missed draw OR pot odds not covered
-        if should_bluff(stage, num_players, position, texture,
-                         hand_class, blockers, range_advantage, spr, line,
-                         in_position=in_position, has_initiative=has_initiative):
+        if _should_bluff():
             # Overbet bluff on river with strong blocker + missed draw
             ob_bluff = (stage == "river"
                         and blockers.get("blocker_score", 0) >= 0.45
@@ -505,9 +572,7 @@ def decide_action(
         implied_wr = win_rate * (1.12 if stage == "flop" else 1.05 if stage == "turn" else 1.08)
         if stage != "river" and implied_wr >= pot_odds and call_ev > -bet * 0.15:
             return _call()
-        if should_bluff(stage, num_players, position, texture,
-                         hand_class, blockers, range_advantage, spr, line,
-                         in_position=in_position, has_initiative=has_initiative):
+        if _should_bluff():
             return _bluff_action("weak_draw")
         return _fold()
 
@@ -518,33 +583,25 @@ def decide_action(
     # BUT if we have strong blockers we exploit their tendency to over-fold large bets.
     if stage == "river":
         if blockers.get("blocker_score", 0) >= 0.55 and use_overbet:
-            if should_bluff(stage, num_players, position, texture,
-                             hand_class, blockers, range_advantage, spr, line,
-                             in_position=in_position, has_initiative=has_initiative):
+            if _should_bluff():
                 return _bluff_action("air", ob=True)
         return _fold()
 
     # First-to-act (no bet): pot_odds=0, call_ev>0 always — must check bluff
     # explicitly or we'd always return CHECK and never bet air in position.
     if bet == 0:
-        if should_bluff(stage, num_players, position, texture,
-                         hand_class, blockers, range_advantage, spr, line,
-                         in_position=in_position, has_initiative=has_initiative):
+        if _should_bluff():
             return _bluff_action("air")
         return _fold()   # CHECK
 
     # Facing a bet: fold if equity < pot odds, unless a bluff is warranted
     if win_rate < pot_odds:
-        if should_bluff(stage, num_players, position, texture,
-                         hand_class, blockers, range_advantage, spr, line,
-                         in_position=in_position, has_initiative=has_initiative):
+        if _should_bluff():
             return _bluff_action("air")
         return _fold()
 
     if call_ev <= 0:
-        if should_bluff(stage, num_players, position, texture,
-                         hand_class, blockers, range_advantage, spr, line,
-                         in_position=in_position, has_initiative=has_initiative):
+        if _should_bluff():
             return _bluff_action("air")
         return _fold()
 

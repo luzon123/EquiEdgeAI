@@ -56,9 +56,15 @@ def adapt_fast_inputs(stack_depth: str, facing_action: str) -> dict:
     All values are floats/ints ready to pass directly to the engine.
     """
     stack    = _STACK_CHIPS.get(stack_depth, _STACK_CHIPS["medium"])
-    pot      = _BASE_POT
     fraction = _ACTION_FRACTIONS.get(facing_action)
-    bet      = stack if fraction is None else round(pot * fraction, 1)
+    bet      = stack if fraction is None else round(_BASE_POT * fraction, 1)
+
+    # Engine convention: `pot` is the TOTAL pot with villain's bet already
+    # committed.  The bet fractions above are "fraction of the 6bb pot
+    # BEFORE the bet", so the villain's bet must be added on top — passing
+    # pot=6 with bet=3 told the engine villain bet 3 into a 3-chip pot,
+    # roughly doubling every fast-mode pot-odds requirement.
+    pot = round(_BASE_POT + bet, 1)
 
     return {
         "pot":     pot,
@@ -73,9 +79,10 @@ def get_sizing_category(action: str, spr: float) -> Optional[str]:
     Recommend a bet-sizing label when the engine says to raise.
 
     Returns one of: 'small' | 'medium' | 'large' | 'jam' | None.
-    None means no sizing recommendation (action is call or fold).
+    None means no sizing recommendation (action is check, call, or fold).
     """
-    if not action.upper().startswith("RAISE"):
+    action_u = action.upper()
+    if not (action_u.startswith("RAISE") or action_u.startswith("BLUFF")):
         return None
     if spr < 2.0:
         return "jam"

@@ -90,6 +90,11 @@ POSITION_RANGES: dict = {
         "AKs", "AKo", "AQs", "AQo", "AJs", "AJo", "ATs",
         "KQs",
     ],
+    "HJ": [
+        "AA", "KK", "QQ", "JJ", "TT", "99", "88",
+        "AKs", "AKo", "AQs", "AQo", "AJs", "AJo", "ATs",
+        "KQs", "KQo", "KJs", "QJs", "JTs",
+    ],
     "CO": [
         "AA", "KK", "QQ", "JJ", "TT", "99", "88",
         "AKs", "AKo", "AQs", "AQo", "AJs", "AJo", "ATs", "ATo",
@@ -135,7 +140,8 @@ POSITION_AGGRESSION: dict = {
     # Post-flop aggression index (0 = least aggressive / most OOP).
     # SB acts first every post-flop street → least aggressive despite being
     # a common pre-flop 3-bettor; BB defends wide and has position over SB.
-    "UTG": 0.0, "UTG+1": 0.05, "UTG+2": 0.10, "MP": 0.2, "CO": 0.6, "BTN": 1.0, "SB": 0.25, "BB": 0.35,
+    "UTG": 0.0, "UTG+1": 0.05, "UTG+2": 0.10, "MP": 0.2, "HJ": 0.4,
+    "CO": 0.6, "BTN": 1.0, "SB": 0.25, "BB": 0.35,
 }
 
 # ---------------------------------------------------------------------------

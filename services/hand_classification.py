@@ -10,6 +10,11 @@ from treys import Card, Evaluator
 from config import RANK_ORDER
 
 _ALL_CARDS = [r + s for r in "AKQJT98765432" for s in "hdcs"]
+_CARD_INT  = {c: Card.new(c) for c in _ALL_CARDS}
+
+# treys Evaluator builds its full lookup table in __init__ (~9 ms) and is
+# read-only afterwards — construct once and share across calls/threads.
+_EVALUATOR = Evaluator()
 
 
 def is_nuts(hero_hand: list[str], board: list[str]) -> bool:
@@ -25,20 +30,71 @@ def is_nuts(hero_hand: list[str], board: list[str]) -> bool:
     Uses treys Evaluator (lower score = stronger hand).
     Exits immediately on the first opponent hand that beats hero.
     """
-    evaluator  = Evaluator()
+    evaluator  = _EVALUATOR
     used       = set(hero_hand) | set(board)
     deck       = [c for c in _ALL_CARDS if c not in used]
-    board_ints = [Card.new(c) for c in board]
-    hero_score = evaluator.evaluate(board_ints, [Card.new(c) for c in hero_hand])
+    board_ints = [_CARD_INT[c] for c in board]
+    hero_score = evaluator.evaluate(board_ints, [_CARD_INT[c] for c in hero_hand])
 
     for opp in combinations(deck, 2):
         try:
-            opp_score = evaluator.evaluate(board_ints, [Card.new(c) for c in opp])
+            opp_score = evaluator.evaluate(board_ints, [_CARD_INT[c] for c in opp])
         except Exception:
             continue
         if opp_score < hero_score:   # opponent beats hero → not nuts
             return False
     return True
+
+
+def _poker_values(cards: list) -> set:
+    """Rank chars → poker values 2-14; the Ace also counts as 1 (wheel)."""
+    vals: set = set()
+    for c in cards:
+        v = 14 - RANK_ORDER[c[0]]
+        vals.add(v)
+        if v == 14:
+            vals.add(1)
+    return vals
+
+
+def _straight_draw_outs(hand: list, board: list) -> set:
+    """
+    Return the set of out VALUES that complete a straight for hero.
+
+    A window [lo, lo+4] qualifies when it contains exactly 4 of the combined
+    hand+board values, the board alone holds fewer than 4 of them (otherwise
+    the draw belongs to the whole table), and hero supplies at least one
+    value in the window that the board lacks.  The single missing value in
+    each qualifying window is an out; 2+ distinct outs = 8-out draw (OESD or
+    double-gutshot), 1 out = gutshot.  A 5-hit window would be a made
+    straight, which the treys evaluator intercepts before draw detection.
+    """
+    hero_v  = _poker_values(hand)
+    board_v = _poker_values(board)
+    all_v   = hero_v | board_v
+    outs: set = set()
+    for lo in range(1, 11):                      # windows 1-5 (wheel) … 10-14
+        window = set(range(lo, lo + 5))
+        hits   = window & all_v
+        if len(hits) != 4:
+            continue
+        if len(window & board_v) >= 4:           # board-only draw — not hero's
+            continue
+        if not (window & (hero_v - board_v)):    # hero adds nothing new here
+            continue
+        outs |= (window - hits)
+    return outs
+
+
+def _has_backdoor_run(hand: list, board: list) -> bool:
+    """Three consecutive combined values with at least one hero value inside."""
+    hero_v = _poker_values(hand)
+    all_v  = hero_v | _poker_values(board)
+    for lo in range(1, 13):
+        run = {lo, lo + 1, lo + 2}
+        if run <= all_v and (run & hero_v):
+            return True
+    return False
 
 
 def classify_hero_hand(hand: list, board: list) -> str:
@@ -61,10 +117,10 @@ def classify_hero_hand(hand: list, board: list) -> str:
             return "strong_draw" if abs(RANK_ORDER[r1] - RANK_ORDER[r2]) <= 4 else "weak_draw"
         return "air"
 
-    evaluator  = Evaluator()
-    board_ints = [Card.new(c) for c in board]
+    evaluator  = _EVALUATOR
+    board_ints = [_CARD_INT[c] for c in board]
     try:
-        score    = evaluator.evaluate(board_ints, [Card.new(c) for c in hand])
+        score    = evaluator.evaluate(board_ints, [_CARD_INT[c] for c in hand])
         rank_str = evaluator.class_to_string(evaluator.get_rank_class(score))
     except Exception:
         return "air"
@@ -145,7 +201,14 @@ def classify_hero_hand(hand: list, board: list) -> str:
             if paired_idx < top_board_idx:          # overpair to entire board
                 # J or better overpair → strong_made; lower → medium_made
                 return "strong_made" if paired_idx <= RANK_ORDER["J"] else "medium_made"
-            return "weak_made"  # underpair
+            # Underpair: a pocket pair below only the TOP board card (e.g. QQ
+            # on A-7-2) still beats every second-pair hand and plays as a
+            # solid bluff-catcher — medium, not weak.  Below the second
+            # distinct board rank it's a genuine weak underpair.
+            distinct_board = sorted(set(board_rank_idxs))
+            if len(distinct_board) > 1 and paired_idx < distinct_board[1]:
+                return "medium_made"
+            return "weak_made"  # underpair below two or more board ranks
 
         # Non-pocket pair: find which hole card paired the board
         paired_rank = None
@@ -190,30 +253,37 @@ def classify_hero_hand(hand: list, board: list) -> str:
             flush_hero_top = bool(hero_suited and min(hero_suited) == min(all_suited))
             break
 
-    # 2) Straight draw: longest consecutive run of unique rank indices
-    hand_rank_idxs  = [RANK_ORDER[c[0]] for c in hand]
-    board_rank_idxs = [RANK_ORDER[c[0]] for c in board]
-    all_rank_idxs   = sorted(set(hand_rank_idxs + board_rank_idxs))
-
-    consecutive = best_run = 1
-    for i in range(1, len(all_rank_idxs)):
-        if all_rank_idxs[i] - all_rank_idxs[i - 1] == 1:
-            consecutive += 1
-            best_run = max(best_run, consecutive)
-        else:
-            consecutive = 1
-    straight_draw_present = best_run >= 4
+    # 2) Straight draw — window-based detection with HERO PARTICIPATION.
+    #    For every 5-rank window (wheel A-5 through broadway T-A) that holds
+    #    exactly 4 of the combined hand+board ranks, the missing rank is a
+    #    straight out.  Two rules keep this honest:
+    #      • the board alone must NOT already hold those 4 ranks (a one-card
+    #        board straight draw belongs to every player, not to hero), and
+    #      • hero must contribute at least one rank the board doesn't have.
+    #    Distinct outs across windows separate draw strength exactly:
+    #      2+ out ranks (8 outs)  = open-ended / double-gutshot → strong
+    #      1 out rank   (4 outs)  = gutshot (incl. A-high / wheel one-enders)
+    straight_out_ranks = _straight_draw_outs(hand, board)
 
     # 3) Combo draw: flush draw AND open-ended straight draw simultaneously (~15 outs).
     #    This is a semi-bluff powerhouse — closer in equity to a made hand than a bare draw.
-    if flush_draw_suit is not None and straight_draw_present:
+    if flush_draw_suit is not None and len(straight_out_ranks) >= 2:
         return "combo_draw"
 
-    # 4) Individual flush draw
+    # 4) Flush draw (a gutshot on the side upgrades a weak flush draw: ~12 outs)
     if flush_draw_suit is not None:
-        return "strong_draw" if flush_hero_top else "weak_draw"
+        if flush_hero_top or straight_out_ranks:
+            return "strong_draw"
+        return "weak_draw"
 
     # 5) Straight draw
-    if best_run >= 4: return "strong_draw"
-    if best_run == 3: return "weak_draw"
+    if len(straight_out_ranks) >= 2:
+        return "strong_draw"
+    if len(straight_out_ranks) == 1:
+        return "weak_draw"
+
+    # 6) Flop-only backdoor: three consecutive ranks including a hero card
+    #    (e.g. 9-8 on 7-high).  On the turn a 3-run has zero direct outs = air.
+    if len(board) == 3 and _has_backdoor_run(hand, board):
+        return "weak_draw"
     return "air"

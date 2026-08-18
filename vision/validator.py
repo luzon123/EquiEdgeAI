@@ -125,9 +125,18 @@ def _translate_clubgg_fields(data: dict, warnings: list) -> None:
     if "hero_stack" not in data and "my_stack" in data:
         data["hero_stack"] = data.pop("my_stack")
 
-    # my_position → hero_position (informational; not used by VisionGameState directly)
+    # my_position → hero_position, normalised to the poker engine's position
+    # vocabulary (the vision prompt emits labels like "Button" / "Small
+    # Blind" / "HJ" that the /decision endpoint would reject verbatim).
     if "hero_position" not in data and "my_position" in data:
         data["hero_position"] = data.pop("my_position")
+    if data.get("hero_position") is not None:
+        raw_pos    = data["hero_position"]
+        normalised = _normalise_position(raw_pos)
+        if normalised is None:
+            warnings.append(f"Unrecognised hero position label: {raw_pos!r}.")
+        else:
+            data["hero_position"] = normalised
 
     # action_required: {"type": "call"|"check", "amount": X} → call_amount
     if "call_amount" not in data and isinstance(data.get("action_required"), dict):
@@ -138,6 +147,29 @@ def _translate_clubgg_fields(data: dict, warnings: list) -> None:
             data["call_amount"] = amount
         elif action_type in ("check", "check/fold"):
             data["call_amount"] = 0
+
+
+# ---------------------------------------------------------------------------
+# Position label normalisation (vision vocabulary → engine vocabulary)
+# ---------------------------------------------------------------------------
+_POSITION_ALIASES: dict[str, str] = {
+    "button": "BTN", "btn": "BTN", "dealer": "BTN", "d": "BTN",
+    "small blind": "SB", "smallblind": "SB", "sb": "SB",
+    "big blind": "BB", "bigblind": "BB", "bb": "BB",
+    "under the gun": "UTG", "utg": "UTG",
+    "utg+1": "UTG+1", "utg1": "UTG+1",
+    "utg+2": "UTG+2", "utg2": "UTG+2",
+    "mp": "MP", "middle position": "MP", "lj": "MP", "lojack": "MP",
+    "hj": "HJ", "hijack": "HJ",
+    "co": "CO", "cutoff": "CO", "cut-off": "CO", "cut off": "CO",
+}
+
+
+def _normalise_position(raw: Any) -> str | None:
+    """Map a free-form position label to the engine's canonical form."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    return _POSITION_ALIASES.get(raw.strip().lower())
 
 
 # ---------------------------------------------------------------------------

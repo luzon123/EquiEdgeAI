@@ -38,6 +38,40 @@ def calculate_spr(stack: float, pot: float) -> float:
     return stack / pot if pot > 0 else 999.0
 
 
+def effective_call(pot: float, bet: float, stack: float) -> tuple[float, float]:
+    """
+    Clamp a facing bet to what hero can actually call (side-pot correction).
+
+    When villain's bet exceeds hero's stack, hero calls all-in for `stack`
+    and the uncallable excess is returned to villain — it is not part of the
+    pot hero is playing for.  Returns (effective_pot, effective_bet).
+    Heads-up this is exact; multiway it is the standard main-pot approximation.
+    """
+    if bet <= stack:
+        return pot, bet
+    excess = bet - stack
+    return max(pot - excess, stack), stack
+
+
+def legalize_raise_size(size: float, bet: float, stack: float) -> int:
+    """
+    Clamp a candidate raise size into the legal window.
+
+    Facing a bet, the minimum legal raise is to 2x the bet (the best
+    available approximation without full street bet history); a stack too
+    short for the min-raise can only jam.  Returns 0 when no raise exists
+    at all (stack <= bet: calling all-in is the only way to continue).
+    No bet facing: any size from 1 chip up to stack is legal.
+    """
+    stack_i = max(1, round(stack))
+    if bet <= 0:
+        return max(1, min(round(size), stack_i))
+    if stack <= bet:
+        return 0
+    min_to = min(round(2 * bet), stack_i)
+    return max(min(round(size), stack_i), min_to)
+
+
 def spr_aggression_factor(spr: float) -> float:
     if spr <= 1.0:  return 1.60
     if spr <= 3.0:  return 1.30
@@ -232,6 +266,10 @@ def calculate_raise_ev(
         stage, num_players, position, raise_fraction, texture, pot, in_position,
         has_initiative=has_initiative,
     )
+    # Raising INTO a bet (raise/check-raise) faces a range that already showed
+    # strength — folds come noticeably less often than versus a checker.
+    if bet > 0:
+        p_fold *= 0.85
     p_fold = max(0.02, min(0.95, p_fold * fold_eq_mult))
 
     # Re-raise probability
@@ -257,9 +295,15 @@ def calculate_raise_ev(
     # realized_wr regresses raw equity toward 50% by the unrealized fraction:
     #   realized_wr = 0.5 + (win_rate - 0.5) × realization
     # This models future street uncertainty, OOP disadvantage, and hand-type effects.
+    #
+    # Winnings when called: villain's original bet is already inside `pot`, so a
+    # villain calling hero's raise only adds the INCREMENT (raise_amount − bet).
+    # Crediting pot + raise_amount double-counted villain's bet and inflated
+    # raise EV in every raise-versus-bet spot.
     realization  = get_equity_realization(stage, in_position, hand_class)
     realized_wr  = 0.5 + (win_rate - 0.5) * realization
-    ev_when_call = (realized_wr * (pot + raise_amount)) - ((1.0 - realized_wr) * raise_amount)
+    villain_add  = max(0.0, raise_amount - bet)
+    ev_when_call = (realized_wr * (pot + villain_add)) - ((1.0 - realized_wr) * raise_amount)
 
     # EV when reraised
     if hand_class in ("nuts", "near_nuts"):
@@ -384,16 +428,26 @@ def evaluate_bluff_catch(
     # EV of calling: win the pot when villain is bluffing, lose the bet otherwise
     bluff_catch_ev = (villain_bluff_freq * pot) - ((1.0 - villain_bluff_freq) * bet)
 
-    catchable_classes   = ("weak_made", "medium_made", "weak_draw", "strong_draw", "air")
-    is_catch_hand       = hand_class in catchable_classes
+    # The bluff-catch EV model assumes hero WINS whenever villain is bluffing.
+    # That only holds for hands with real showdown value (any pair) or live
+    # draw equity — pure air loses to villain's bluffs at showdown too, so
+    # "air" must never bluff-catch pre-river.  On the river, air qualifies
+    # only with an Ace-high-calibre holding (blocker_score >= 0.35 means an
+    # Ace in hand), which genuinely beats busted-draw bluffs.
     has_blocker_support = blocker_score >= 0.25 or blocks_nuts
     ev_positive         = bluff_catch_ev > 0
 
     if stage == "river":
+        is_catch_hand = (
+            hand_class in ("weak_made", "medium_made")
+            or (hand_class == "air" and blocker_score >= 0.35)
+        )
         should_catch = is_catch_hand and ev_positive and has_blocker_support
     else:
-        # Pre-river: catch if villain bluffs often enough to cover pot odds
-        should_catch = is_catch_hand and villain_bluff_freq >= pot_odds * 0.85
+        # Pre-river: catch if villain bluffs often enough to cover pot odds.
+        # Draws qualify (their live outs cover the equity the model assumes).
+        is_catch_hand = hand_class in ("weak_made", "medium_made", "weak_draw", "strong_draw")
+        should_catch  = is_catch_hand and villain_bluff_freq >= pot_odds * 0.85
 
     reason = ""
     if should_catch:
@@ -480,6 +534,7 @@ def should_bluff(
     bluff_freq_mult: float = 1.0,
     in_position: bool = True,
     has_initiative: bool = False,
+    facing_bet: bool = False,
 ) -> bool:
     """
     Deterministic bluff decision: returns True iff the computed bluff frequency
@@ -514,6 +569,12 @@ def should_bluff(
     # hands than a donk bet or out-of-position probe, so folds come more easily.
     if has_initiative:
         base *= 1.25
+
+    # Bluff-RAISING into a live bet is very different from stabbing at a
+    # checked pot: villain's betting range is stronger than their checking
+    # range and continues far more often, so raise-bluffs must be much rarer.
+    if facing_bet:
+        base *= 0.60
 
     if line == "aggressive":
         base *= 1.25

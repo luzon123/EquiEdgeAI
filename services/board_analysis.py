@@ -35,8 +35,14 @@ def analyze_board_texture(board: list) -> dict:
         for lo in range(1, 11)                            # windows A-5 through T-A
     )
 
-    high_card_board = min(rank_indices) <= RANK_ORDER["T"]
-    low_card_board  = max(rank_indices) >= RANK_ORDER["7"]
+    # Mutually exclusive, defined by the board's HIGHEST card:
+    #   high = Q/K/A-high board (favours tight early-position ranges)
+    #   low  = 9-high or lower  (favours wide/speculative ranges)
+    # T/J-high boards are neither.  The previous definitions ("contains any
+    # T+" / "contains any 7-") were both true on most boards (e.g. K-7-2),
+    # firing contradictory range-advantage adjustments at once.
+    high_card_board = min(rank_indices) <= RANK_ORDER["Q"]
+    low_card_board  = min(rank_indices) >= RANK_ORDER["9"]
 
     wetness = 0.0
     if flush_draw:    wetness += 0.40

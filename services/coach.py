@@ -33,6 +33,12 @@ def classify_decision_tags(
     if action_type == "FOLD":
         return ["FOLD"]
 
+    # CHECK: trapping with a monster, otherwise neutral pot control
+    if action_type == "CHECK":
+        if hand_class in ("nuts", "near_nuts") and spr >= 3.0:
+            return ["TRAP"]
+        return ["NEUTRAL"]
+
     # VALUE: raising / betting a clearly strong holding for value
     if action_type == "RAISE" and hand_class in ("nuts", "near_nuts", "strong_made"):
         tags.append("VALUE")
@@ -224,6 +230,11 @@ def build_reasoning(
             f"EV: call ({call_ev:+.1f} chips) — raising ({raise_ev:+.1f}) is not "
             "significantly better; pot control is preferred here"
         )
+    elif action_type == "CHECK":
+        bullets.append(
+            f"EV: check ({call_ev:+.1f} chips) — betting ({raise_ev:+.1f}) does not "
+            "clear the bar; take the free card / free showdown"
+        )
     elif action_type == "FOLD":
         bullets.append(
             f"EV: call ({call_ev:+.1f} chips) is negative — folding preserves chips"
@@ -266,16 +277,16 @@ def compute_ux_signals(
 
     # Aggression score
     _AGG_BASE: dict = {
-        "FOLD": 0.00, "CALL": 0.30, "RAISE": 0.78, "BLUFF": 0.92,
+        "FOLD": 0.00, "CHECK": 0.08, "CALL": 0.30, "RAISE": 0.78, "BLUFF": 0.92,
     }
     aggression_score = _AGG_BASE.get(action_type, 0.30)
 
-    # Trap: calling with the nuts looks passive but is intentionally deceptive
-    if action_type == "CALL" and hand_class in ("nuts", "near_nuts") and spr >= 3.0:
+    # Trap: checking/calling with the nuts looks passive but is intentionally deceptive
+    if action_type in ("CALL", "CHECK") and hand_class in ("nuts", "near_nuts") and spr >= 3.0:
         aggression_score = 0.12
 
     # Risk level
-    if action_type == "FOLD":
+    if action_type in ("FOLD", "CHECK"):
         risk_level = "low"
     elif action_type == "CALL":
         if confidence >= 0.65 or hand_class in ("nuts", "near_nuts", "strong_made"):

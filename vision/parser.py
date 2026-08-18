@@ -1,5 +1,5 @@
 """
-JSON parser for raw OpenAI vision API responses.
+JSON parser for raw vision-model responses.
 
 Responsibilities:
 - Strip any accidental markdown fences.

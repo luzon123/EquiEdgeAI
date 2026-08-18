@@ -21,7 +21,7 @@ from vision.analyzer import get_default_analyzer
 logger          = get_logger()
 analyze_image_bp = Blueprint("analyze_image", __name__)
 
-# Module-level analyzer singleton — reuses the OpenAI client across requests
+# Module-level analyzer singleton — reuses the vision client across requests
 _analyzer = get_default_analyzer()
 
 # ---------------------------------------------------------------------------
