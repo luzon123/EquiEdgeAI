@@ -1,0 +1,142 @@
+/* Standalone app shell for the ClubGG analyzer PWA — tokens mirror
+   static/css/global.css so it matches the rest of the site, but this file
+   is self-contained (no dependency on global.css) since the PWA page does
+   not extend base.html. */
+:root {
+  --bg: #06101e;
+  --surface: rgba(12, 24, 42, 0.94);
+  --glass-border: rgba(50, 130, 220, 0.18);
+  --text: #e4edf8;
+  --text-2: #b8cde4;
+  --muted: #6a8aaa;
+  --accent: #32b3ff;
+  --accent-dim: rgba(50, 179, 255, 0.15);
+  --green: #22d07a;
+  --red: #ff5c72;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* iPhone safe areas (notch / home indicator) */
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.brand {
+  text-align: center;
+  margin-top: 8px;
+}
+.brand-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+.brand-title .spade { color: var(--accent); }
+.brand-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 16px 0;
+}
+
+/* ── The one button ─────────────────────────────────────────── */
+#analyzeBtn {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px 20px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #06131f;
+  background: linear-gradient(135deg, #3fc4ff, var(--accent));
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(50, 179, 255, 0.28);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, opacity 0.15s ease;
+}
+#analyzeBtn:active { transform: scale(0.98); }
+#analyzeBtn:disabled {
+  opacity: 0.75;
+  background: linear-gradient(135deg, #274a63, #1c3a52);
+  box-shadow: none;
+  cursor: default;
+}
+
+.status-line {
+  min-height: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+.status-line.is-error { color: var(--red); }
+
+/* ── Result card ─────────────────────────────────────────────── */
+.result-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 20px;
+  text-align: center;
+  display: none;
+}
+.result-card.visible { display: block; }
+.result-action {
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.result-action.action-fold { color: var(--red); }
+.result-action.action-check,
+.result-action.action-call { color: var(--text); }
+.result-action.action-bet,
+.result-action.action-raise,
+.result-action.action-allin { color: var(--green); }
+.result-winrate {
+  margin-top: 10px;
+  font-size: 15px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.result-winrate b { color: var(--text); font-size: 17px; }
+
+footer.hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  padding-bottom: 6px;
+}

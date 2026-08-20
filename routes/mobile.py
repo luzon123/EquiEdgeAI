@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 import time
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory
 
 from extensions import csrf, limiter
 from models.vision_result import VisionGameState
@@ -138,3 +138,27 @@ def mobile_analyze():
 
     logger.info("[MOBILE] returning result | action=%s winrate=%s", response["action"], response["winrate"])
     return jsonify(response), 200
+
+
+# ---------------------------------------------------------------------------
+# GET /mobile — iPhone PWA (Safari has no cross-app screen capture, so this
+# is a manual-screenshot-picker client, not a floating-overlay one like
+# Android). Thin HTML/JS shell only; it POSTs to mobile_analyze() above like
+# any other client — no separate endpoint, no separate contract.
+# ---------------------------------------------------------------------------
+@mobile_bp.route("/mobile", methods=["GET"])
+def mobile_pwa():
+    return render_template("mobile_pwa.html")
+
+
+# Served at the ROOT path (not /static/pwa/sw.js) so its default scope is
+# "/" and it can control /mobile without needing a Service-Worker-Allowed
+# response header — a script's own URL path sets the ceiling on the scope
+# it can register for.
+@mobile_bp.route("/sw.js", methods=["GET"])
+def mobile_service_worker():
+    return send_from_directory(
+        os.path.join(current_app.static_folder, "pwa"),
+        "sw.js",
+        mimetype="application/javascript",
+    )

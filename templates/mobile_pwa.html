@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#06101e" />
+  <meta name="description" content="Select a ClubGG poker screenshot and get an instant decision from EquiEdgeAI." />
+
+  <!-- iOS "Add to Home Screen" standalone app behavior -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="EquiEdgeAI" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='pwa/icons/apple-touch-icon.png') }}" />
+  <link rel="icon" href="{{ url_for('static', filename='pwa/icons/favicon-32.png') }}" sizes="32x32" />
+  <link rel="manifest" href="{{ url_for('static', filename='pwa/manifest.json') }}" />
+
+  <title>EquiEdgeAI — ClubGG Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='pwa/style.css') }}?v=1" />
+</head>
+<body>
+
+  <div class="brand">
+    <div class="brand-title"><span class="spade">&#9824;</span> EquiEdgeAI</div>
+    <div class="brand-sub">ClubGG Analyzer</div>
+  </div>
+
+  <div class="stage">
+    <button id="analyzeBtn" type="button">ANALYZE SCREENSHOT</button>
+    <div id="statusLine" class="status-line">Ready</div>
+
+    <div id="resultCard" class="result-card">
+      <div id="resultAction" class="result-action">—</div>
+      <div id="resultWinrate" class="result-winrate"></div>
+    </div>
+  </div>
+
+  <footer class="hint">Screenshot never leaves this device except to your own backend.</footer>
+
+  <!-- accept="image/*" opens the iOS Photo Library / Take Photo action sheet.
+       No `capture` attribute — that would force the camera instead of letting
+       the user pick an existing ClubGG screenshot. -->
+  <input id="fileInput" type="file" accept="image/*" hidden />
+
+  <script src="{{ url_for('static', filename='pwa/app.js') }}?v=1" defer></script>
+</body>
+</html>

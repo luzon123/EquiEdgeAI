@@ -72,6 +72,13 @@ def create_app() -> Flask:
 
 if __name__ == "__main__":
     application = create_app()
-    get_logger().info("Starting Poker Decision Engine on http://127.0.0.1:5000")
-    application.run(host="127.0.0.1", port=5000, debug=True)
+    # 0.0.0.0, not 127.0.0.1: the iPhone PWA (mobile/... GET /mobile) has no
+    # adb-reverse-style USB tunnel like Android dev does, so it must reach
+    # this dev server directly over Wi-Fi via the PC's LAN IP (e.g.
+    # http://192.168.1.23:5000/mobile, typed into Safari — not hardcoded
+    # anywhere). Binding 0.0.0.0 listens on all interfaces, INCLUDING
+    # loopback, so Android's existing `adb reverse tcp:5000 tcp:5000` (which
+    # arrives as a 127.0.0.1 connection) still works unchanged.
+    get_logger().info("Starting Poker Decision Engine on http://0.0.0.0:5000")
+    application.run(host="0.0.0.0", port=5000, debug=True)
 
