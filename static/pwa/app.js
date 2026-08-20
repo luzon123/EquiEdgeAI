@@ -13,7 +13,17 @@
 
   const TAG = '[WEB-ANALYZE]';
   const ENDPOINT = '/mobile/analyze';
-  const REQUEST_TIMEOUT_MS = 12_000; // matches Android AnalyzeApi.kt's TIMEOUT_MS
+  // 45s, not 12s: the backend's own Claude call (vision/analyzer.py) is
+  // configured for up to CLAUDE_VISION_TIMEOUT=60s (default), plus image
+  // decode + decision-engine time. A client timeout shorter than the
+  // server's own budget means the browser routinely aborts requests the
+  // backend is still correctly working on — that WAS the bug (root-caused
+  // 2026-08-20): the client gave up before Claude Vision, which can
+  // legitimately take longer than a few seconds, had a chance to respond.
+  // 45s stays under the server's 60s ceiling (so a genuinely-stuck request
+  // still surfaces as a clear client-side timeout instead of hanging
+  // forever) while covering realistic response times with real margin.
+  const REQUEST_TIMEOUT_MS = 45_000;
   const MAX_BYTES = 20 * 1024 * 1024; // matches utils/image_utils.py's MAX_IMAGE_BYTES default
 
   const ANALYZING_MESSAGES = ['Reading table…', 'Analyzing hand…', 'Calculating decision…'];
@@ -69,6 +79,7 @@
   }
 
   function openPicker() {
+    console.log(`${TAG} button_clicked`);
     if (state === 'analyzing') {
       console.warn(`${TAG} tap ignored, already analyzing`);
       return;
@@ -82,7 +93,9 @@
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
-    console.log(`${TAG} image selected name=${file.name} type=${file.type} size=${file.size}`);
+    console.log(`${TAG} file_selected`);
+    console.log(`${TAG} file_name=${file.name}`);
+    console.log(`${TAG} file_size=${file.size}`);
 
     if (!file.type.startsWith('image/')) {
       resetToIdle("That doesn't look like an image. Try again.", true);
@@ -116,47 +129,55 @@
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    console.log(`${TAG} upload started`);
+    console.log(`${TAG} upload_started`);
     let response;
     try {
       response = await fetch(ENDPOINT, { method: 'POST', body: form, signal: controller.signal });
     } catch (err) {
       clearTimeout(timer);
       if (controller.signal.aborted) {
-        console.error(`${TAG}[ERROR] timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        console.error(`${TAG}[ERROR] stage=upload timed out after ${REQUEST_TIMEOUT_MS}ms`);
         resetToIdle('Analysis timed out. Try again.', true);
       } else {
-        console.error(`${TAG}[ERROR] network error: ${err && err.message}`);
+        console.error(`${TAG}[ERROR] stage=upload network error: ${err && err.message}`);
         resetToIdle('Could not reach the server. Check your connection and try again.', true);
       }
       return;
     }
     clearTimeout(timer);
-    console.log(`${TAG} response received status=${response.status}`);
+    // With the plain Fetch API (no XHR upload-progress tracking, deliberately
+    // avoided to keep this dependency-free), the promise resolving IS the
+    // signal that both the upload and the response headers have arrived —
+    // there's no separate lower-level event for "upload done" vs "response
+    // headers in" to log distinctly.
+    console.log(`${TAG} upload_completed`);
+    console.log(`${TAG} response_received`);
+    console.log(`${TAG} response_status=${response.status}`);
 
     let body;
     try {
       body = await response.json();
     } catch (err) {
-      console.error(`${TAG}[ERROR] response was not valid JSON: ${err && err.message}`);
+      console.error(`${TAG}[ERROR] stage=parse_response response was not valid JSON: ${err && err.message}`);
       resetToIdle('Analysis failed. Try again.', true);
       return;
     }
 
     if (!response.ok) {
       const message = (body && typeof body.error === 'string' && body.error) || 'Analysis failed. Try again.';
-      console.error(`${TAG}[ERROR] server error status=${response.status} message=${message}`);
+      console.error(`${TAG}[ERROR] stage=backend_error status=${response.status} message=${message}`);
       resetToIdle(message, true);
       return;
     }
 
     const VALID_ACTIONS = ['FOLD', 'CHECK', 'CALL', 'BET', 'RAISE', 'ALL-IN'];
     if (typeof body.winrate !== 'number' || !VALID_ACTIONS.includes(body.action)) {
-      console.error(`${TAG}[ERROR] unexpected response shape: ${JSON.stringify(body)}`);
+      console.error(`${TAG}[ERROR] stage=invalid_response shape=${JSON.stringify(body)}`);
       resetToIdle('Analysis failed. Try again.', true);
       return;
     }
 
+    console.log(`${TAG} result_received`);
     console.log(`${TAG} result=${body.action} winrate=${body.winrate}`);
     showResult(body.action, body.winrate);
   }

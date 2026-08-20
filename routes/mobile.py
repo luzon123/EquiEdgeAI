@@ -57,7 +57,7 @@ def mobile_analyze():
     """
     t_start = time.monotonic()
     timings: dict = {}
-    logger.info("[MOBILE] request received")
+    logger.info("[MOBILE] request_received")
 
     # -- 1. Extract uploaded file --------------------------------------------
     if "image" not in request.files or not request.files["image"].filename:
@@ -66,33 +66,56 @@ def mobile_analyze():
     uploaded = request.files["image"]
     try:
         file_bytes = uploaded.read()
-    except Exception:
-        logger.exception("Mobile analyze: failed to read uploaded file.")
+    except Exception as exc:
+        logger.error(
+            "[MOBILE][ERROR] stage=read_upload exception=%s: %s",
+            type(exc).__name__, exc, exc_info=True,
+        )
         return jsonify({"error": "Could not read the uploaded image."}), 400
-    logger.info("[MOBILE] image received | bytes=%d", len(file_bytes))
+    logger.info("[MOBILE] image_received | bytes=%d", len(file_bytes))
 
     # -- 2. Validate / pre-process image --------------------------------------
     t0 = time.monotonic()
+    logger.info("[MOBILE] image_validation_started")
     try:
         processed = validate_and_process_image(file_bytes=file_bytes, filename=uploaded.filename)
     except ValueError as exc:
+        # An expected, handled rejection (bad format/size/corrupt file) —
+        # not a bug, so logged as a plain rejection rather than [ERROR].
+        logger.info("[MOBILE] image_validation_rejected | reason=%s", exc)
         return jsonify({"error": str(exc)}), 422
-    except RuntimeError:
-        logger.exception("Mobile analyze: image processing misconfigured.")
+    except RuntimeError as exc:
+        logger.error(
+            "[MOBILE][ERROR] stage=image_validation exception=%s: %s",
+            type(exc).__name__, exc, exc_info=True,
+        )
         return jsonify({"error": "Analysis is temporarily unavailable. Try again shortly."}), 500
     timings["image_prep_ms"] = round((time.monotonic() - t0) * 1000, 1)
-    logger.info("[MOBILE] image decoded | mime=%s ms=%.1f", processed.mime_type, timings["image_prep_ms"])
+    logger.info(
+        "[MOBILE] image_validation_passed | mime=%s ms=%.1f",
+        processed.mime_type, timings["image_prep_ms"],
+    )
 
     # -- 3. Vision pipeline: provider call + JSON parse + state validation ---
     t0 = time.monotonic()
-    logger.info("[MOBILE] sending to Claude")
+    logger.info("[MOBILE] claude_request_started")
     try:
         vision_result = _analyzer.analyze(processed.data, processed.mime_type)
-    except Exception:
-        logger.exception("Mobile analyze: vision pipeline error.")
+    except Exception as exc:
+        # VisionAnalyzer.analyze() normally catches provider errors itself
+        # and returns ValidationResult(valid=False, ...) rather than
+        # raising — this branch only fires for a genuinely unexpected bug
+        # elsewhere in the pipeline, not an ordinary Claude failure/timeout.
+        logger.error(
+            "[MOBILE][ERROR] stage=claude_request exception=%s: %s",
+            type(exc).__name__, exc, exc_info=True,
+        )
         return jsonify({"error": "Analysis failed. Try again."}), 502
     timings["vision_ms"] = round((time.monotonic() - t0) * 1000, 1)
-    logger.info("[MOBILE] Claude response received | ms=%.1f valid=%s", timings["vision_ms"], vision_result.valid)
+    logger.info(
+        "[MOBILE] claude_response_received | ms=%.1f valid=%s",
+        timings["vision_ms"], vision_result.valid,
+    )
 
     if not vision_result.valid:
         logger.warning(
@@ -114,10 +137,14 @@ def mobile_analyze():
 
     # -- 5. Decision pipeline: equity -> EV -> decision -----------------------
     t0 = time.monotonic()
+    logger.info("[MOBILE] decision_engine_started")
     try:
         result = run_decision_pipeline(mode=_MOBILE_MODE, **params)
-    except Exception:
-        logger.exception("Mobile analyze: decision pipeline error.")
+    except Exception as exc:
+        logger.error(
+            "[MOBILE][ERROR] stage=decision_engine exception=%s: %s",
+            type(exc).__name__, exc, exc_info=True,
+        )
         return jsonify({"error": "Analysis failed. Try again."}), 500
     timings["engine_ms"] = round((time.monotonic() - t0) * 1000, 1)
 
@@ -136,7 +163,7 @@ def mobile_analyze():
     if _DEBUG_TIMING:
         response["_timings"] = timings
 
-    logger.info("[MOBILE] returning result | action=%s winrate=%s", response["action"], response["winrate"])
+    logger.info("[MOBILE] response_sent | action=%s winrate=%s", response["action"], response["winrate"])
     return jsonify(response), 200
 
 
