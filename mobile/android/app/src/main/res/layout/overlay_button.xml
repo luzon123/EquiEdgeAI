@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The single floating control. Deliberately a plain round button with one
+  word — "small, movable, non-intrusive, easy to tap" per spec, not a
+  richer widget that would draw more attention on top of the poker table.
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="56dp"
+    android:layout_height="56dp"
+    android:background="@drawable/overlay_button_background"
+    android:gravity="center"
+    android:text="@string/overlay_button_label"
+    android:textColor="#FFFFFF"
+    android:textSize="11sp"
+    android:textStyle="bold"
+    android:elevation="8dp" />

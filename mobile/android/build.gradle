@@ -1,0 +1,24 @@
+buildscript {
+    ext {
+        buildToolsVersion = "35.0.0"
+        // 26, not the RN-default 24: the floating overlay uses
+        // WindowManager.TYPE_APPLICATION_OVERLAY (API 26+), the modern,
+        // non-deprecated overlay window type — see mobile/android-overlay/README.md.
+        minSdkVersion = 26
+        compileSdkVersion = 35
+        targetSdkVersion = 34
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.0.21"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"

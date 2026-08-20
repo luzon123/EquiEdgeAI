@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">EquiEdgeAI</string>
+    <string name="overlay_button_label">ANALYZE</string>
+</resources>

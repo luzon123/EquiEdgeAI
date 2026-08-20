@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      Merged ONLY into debug builds by AGP's source-set manifest merger
+      (app/src/debug/AndroidManifest.xml has no release-build counterpart).
+      Points the app at network_security_config.xml so the debug build can
+      reach the local Flask dev server over plain HTTP via
+      `adb reverse tcp:5000 tcp:5000` — see that file's comment for exactly
+      which addresses are allowed. minSdk is already 26, so
+      android:networkSecurityConfig (available since API 24) needs no extra
+      API-level guard. The release build's application tag has no such
+      override and stays cleartext-blocked, matching its
+      https://equiedge-ai.onrender.com API_BASE_URL.
+    -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

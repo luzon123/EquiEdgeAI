@@ -1,56 +1,71 @@
-# Android Floating Overlay — Setup
+# Android Floating Overlay — Source of Record
 
-This directory is a **source drop**, not a standalone buildable module. It's meant to be
-merged into the `android/` project that `react-native init` (or an existing RN build)
-generates — the same reason `mobile/ios-share-extension/` isn't a standalone Xcode
-project. This sandbox has no Android SDK / Gradle / `javac` installed, so none of this
-has been compiled here — it has been written and reviewed carefully against the current
-Android APIs it uses (`MediaProjection`, `WindowManager.TYPE_APPLICATION_OVERLAY`,
-foreground service types), but **build it in Android Studio before shipping it.**
+**This has now been integrated into `mobile/android/`** (a real, RN-CLI-generated Android
+project — see `mobile/android/README.md` for build status and exact commands). This
+directory remains the source of record / reference copy: if you regenerate `mobile/android/`
+from scratch, these are the exact files to re-merge, and this README documents *why* each
+design choice was made, which the integrated copy's inline comments only partially repeat.
+
+Written and reviewed carefully against current Android APIs (`MediaProjection`,
+`WindowManager.TYPE_APPLICATION_OVERLAY`, foreground service types), but **has not been
+compiled by an actual Gradle build in this environment** — no Android SDK/JDK here. See
+`mobile/android/README.md` for exactly what's missing and what running `./gradlew` will
+require.
 
 ## What's here
 
 ```
 android-overlay/
-  AndroidManifestAdditions.xml     — permissions + component registrations to merge in
+  AndroidManifestAdditions.xml     — permissions + component registrations (already merged
+                                      into mobile/android/app/src/main/AndroidManifest.xml)
   src/main/java/ai/equiedge/mobile/overlay/
     OverlayPermissionActivity.kt   — one-time setup: overlay permission + capture consent
     OverlayService.kt              — the floating button, drag handling, capture orchestration
     ScreenCapture.kt               — one-shot MediaProjection -> PNG bytes
     AnalyzeApi.kt                  — POST /mobile/analyze (same contract as iOS/RN)
+    OverlayModule.kt               — RN native module: exposes startOverlaySetup() to JS
+    OverlayPackage.kt              — ReactPackage registering OverlayModule
   src/main/res/...                 — button + result bubble layouts/drawables/strings
 ```
 
-## Merge steps
+## What integrating this into a real project involves (already done in `mobile/android/`)
 
-1. Generate (or use the existing) `android/` project via `react-native init` /
-   `npx react-native run-android` once, from `mobile/`.
-2. Copy `src/main/java/ai/equiedge/mobile/overlay/` into
+1. Copy `src/main/java/ai/equiedge/mobile/overlay/` into
    `android/app/src/main/java/ai/equiedge/mobile/overlay/`.
-3. Copy `src/main/res/layout/`, `src/main/res/drawable/`, `src/main/res/values/strings.xml`
-   into the matching folders under `android/app/src/main/res/`.
-4. Merge `AndroidManifestAdditions.xml` into `android/app/src/main/AndroidManifest.xml`
-   (permissions inside `<manifest>`, the activity/service inside `<application>`).
-5. Add to `android/app/build.gradle` `dependencies { ... }`:
+2. Copy `src/main/res/layout/`, `src/main/res/drawable/`, and merge
+   `src/main/res/values/strings.xml`'s `overlay_button_label` string into the project's
+   existing `strings.xml`.
+3. Merge `AndroidManifestAdditions.xml` into `android/app/src/main/AndroidManifest.xml`
+   (permissions inside `<manifest>`; `OverlayPermissionActivity` + `OverlayService` inside
+   `<application>`).
+4. Add to `android/app/build.gradle`'s `dependencies { ... }`:
    ```gradle
    implementation "androidx.core:core-ktx:1.12.0"
    implementation "androidx.activity:activity-ktx:1.8.2"
    implementation "androidx.appcompat:appcompat:1.6.1"
    ```
-6. Set `minSdkVersion 26` in `android/build.gradle` — `WindowManager.TYPE_APPLICATION_OVERLAY`
+   (Declared explicitly for clarity even though `react-android`'s own AppCompat dependency
+   likely already pulls these in transitively — direct declaration over relying on an
+   unverified transitive graph.)
+5. Set `minSdkVersion 26` in `android/build.gradle` — `WindowManager.TYPE_APPLICATION_OVERLAY`
    (the modern, non-deprecated overlay window type) requires API 26 (Android 8.0, 2017).
    That is the intentional floor; there is no fallback to the legacy `TYPE_PHONE` overlay
-   type here (it requires a different, effectively-deprecated permission model Google has
-   been phasing out — not worth supporting for a 2026 target audience).
-7. Launch `OverlayPermissionActivity` from somewhere reachable in the RN app (a settings
-   screen button, a native module call, or as the app's own launcher activity) to start
-   the setup flow described below.
+   type here (a different, effectively-deprecated permission model Google has been phasing
+   out — not worth supporting for a 2026 target audience).
+6. Enable `buildFeatures { buildConfig true }` and add a per-build-type
+   `buildConfigField "String", "API_BASE_URL", "\"...\""` (debug -> dev server, release ->
+   production) — `AnalyzeApi.kt` reads `BuildConfig.API_BASE_URL`, never a hardcoded string.
+   See `mobile/android/app/build.gradle` for the exact values in use.
+7. Register `OverlayPackage()` in `MainApplication.kt`'s `getPackages()` list, so RN's
+   `NativeModules.OverlayModule` resolves. `mobile/src/native/overlayBridge.ts` wraps the
+   call; `HomeScreen.tsx` has an Android-only "Enable Floating Overlay" button that invokes
+   it — that's the reachable entry point into the flow below.
 
 ## Runtime flow
 
 ```
-User opens app once
-  -> OverlayPermissionActivity
+User opens the RN app -> taps "Enable Floating Overlay" (Android-only button, HomeScreen.tsx)
+  -> OverlayModule.startOverlaySetup() -> OverlayPermissionActivity
      -> Settings.ACTION_MANAGE_OVERLAY_PERMISSION (system settings screen)
      -> MediaProjectionManager.createScreenCaptureIntent() (system consent dialog)
   -> OverlayService started with the granted projection token
@@ -79,16 +94,18 @@ User taps ANALYZE (or drags it to reposition first)
   service must call `startForeground()` with that type **before** requesting the
   `MediaProjection` instance — the ordering in `onStartCommand()` is load-bearing, not
   incidental.
-- **Plain `HttpURLConnection`, not OkHttp/Retrofit**: this is a source drop into a host
-  project of unknown dependency state — adding a networking library the host hasn't
-  already declared would be presumptuous. Swap it for OkHttp freely once merged in if the
-  host app already depends on it.
+- **Plain `HttpURLConnection`, not OkHttp/Retrofit**: keeps the overlay's dependency
+  footprint to what's already explicitly declared in `mobile/android/app/build.gradle` —
+  nothing silently assumed present.
+- **`BuildConfig.API_BASE_URL`, not a hardcoded string**: standard Gradle mechanism (no new
+  dependency) for a debug build to point at your dev machine while release points at
+  production — see `mobile/android/app/build.gradle`'s `debug`/`release` build types.
 
 ## Known limitations / follow-ups
 
-- **Not verified by an actual Gradle build** — no Android SDK in this environment. Sanity
-  checked by hand against current `androidx`/platform APIs; build it in Android Studio and
-  fix whatever the compiler flags before shipping.
+- **Not verified by an actual Gradle build** — no Android SDK/JDK in this environment. See
+  `mobile/android/README.md` for the exact missing pieces and the commands to run once
+  they're installed.
 - **App icon placeholder**: `OverlayService`'s notification uses
   `android.R.drawable.ic_menu_view` (a system icon) as a placeholder — replace with a real
   app icon drawable before release; Android requires a valid small icon for the foreground

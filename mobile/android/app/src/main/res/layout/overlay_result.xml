@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Result bubble: winrate + action only, matching the production mobile
+  spec exactly — no pot/stack/EV/reasoning ever rendered here.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/overlay_result_background"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="14dp"
+    android:elevation="8dp">
+
+    <TextView
+        android:id="@+id/winrateText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/actionText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05" />
+
+</LinearLayout>

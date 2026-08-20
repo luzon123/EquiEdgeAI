@@ -13,10 +13,14 @@
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 <!-- Inside <application ...> -->
+<!-- @style/AppTheme is the RN template's own AppCompat-derived theme
+     (values/styles.xml) — reuse it rather than referencing a raw platform
+     theme, so this activity matches the rest of the app and doesn't need
+     its own theme resource. -->
 <activity
     android:name="ai.equiedge.mobile.overlay.OverlayPermissionActivity"
     android:exported="false"
-    android:theme="@style/Theme.AppCompat.Light" />
+    android:theme="@style/AppTheme" />
 
 <service
     android:name="ai.equiedge.mobile.overlay.OverlayService"

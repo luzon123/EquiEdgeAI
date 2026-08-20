@@ -57,6 +57,7 @@ def mobile_analyze():
     """
     t_start = time.monotonic()
     timings: dict = {}
+    logger.info("[MOBILE] request received")
 
     # -- 1. Extract uploaded file --------------------------------------------
     if "image" not in request.files or not request.files["image"].filename:
@@ -68,6 +69,7 @@ def mobile_analyze():
     except Exception:
         logger.exception("Mobile analyze: failed to read uploaded file.")
         return jsonify({"error": "Could not read the uploaded image."}), 400
+    logger.info("[MOBILE] image received | bytes=%d", len(file_bytes))
 
     # -- 2. Validate / pre-process image --------------------------------------
     t0 = time.monotonic()
@@ -79,15 +81,18 @@ def mobile_analyze():
         logger.exception("Mobile analyze: image processing misconfigured.")
         return jsonify({"error": "Analysis is temporarily unavailable. Try again shortly."}), 500
     timings["image_prep_ms"] = round((time.monotonic() - t0) * 1000, 1)
+    logger.info("[MOBILE] image decoded | mime=%s ms=%.1f", processed.mime_type, timings["image_prep_ms"])
 
     # -- 3. Vision pipeline: provider call + JSON parse + state validation ---
     t0 = time.monotonic()
+    logger.info("[MOBILE] sending to Claude")
     try:
         vision_result = _analyzer.analyze(processed.data, processed.mime_type)
     except Exception:
         logger.exception("Mobile analyze: vision pipeline error.")
         return jsonify({"error": "Analysis failed. Try again."}), 502
     timings["vision_ms"] = round((time.monotonic() - t0) * 1000, 1)
+    logger.info("[MOBILE] Claude response received | ms=%.1f valid=%s", timings["vision_ms"], vision_result.valid)
 
     if not vision_result.valid:
         logger.warning(
@@ -131,4 +136,5 @@ def mobile_analyze():
     if _DEBUG_TIMING:
         response["_timings"] = timings
 
+    logger.info("[MOBILE] returning result | action=%s winrate=%s", response["action"], response["winrate"])
     return jsonify(response), 200

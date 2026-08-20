@@ -23,6 +23,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { analyzeScreenshot, ImageSource } from '../api/client';
 import { AnalyzeResult, isAnalyzeError } from '../types/result';
 import { actionColor, colors } from '../theme/colors';
+import { isOverlaySupported, startOverlaySetup } from '../native/overlayBridge';
 
 type Status = 'idle' | 'analyzing' | 'done';
 
@@ -58,9 +59,16 @@ export default function HomeScreen(): JSX.Element {
     <SafeAreaView style={styles.root}>
       <View style={styles.center}>
         {status === 'idle' && (
-          <Pressable style={styles.primaryButton} onPress={pickAndAnalyze}>
-            <Text style={styles.primaryButtonText}>Analyze Screenshot</Text>
-          </Pressable>
+          <View style={styles.centerColumn}>
+            <Pressable style={styles.primaryButton} onPress={pickAndAnalyze}>
+              <Text style={styles.primaryButtonText}>Analyze Screenshot</Text>
+            </Pressable>
+            {isOverlaySupported() && (
+              <Pressable style={styles.secondaryButton} onPress={startOverlaySetup}>
+                <Text style={styles.secondaryButtonText}>Enable Floating Overlay</Text>
+              </Pressable>
+            )}
+          </View>
         )}
 
         {status === 'analyzing' && (
