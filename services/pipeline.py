@@ -9,6 +9,7 @@ route may reimplement any part of this computation.
 """
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 from config import DEFAULT_SIMULATIONS, MIN_SIMULATIONS, MAX_SIMULATIONS, QUICK_SIMULATIONS
@@ -120,17 +121,26 @@ def run_decision_pipeline(
     odds_pot, odds_bet = effective_call(pot, bet, stack)
     pot_odds        = calculate_pot_odds(odds_pot, odds_bet)
 
+    # perf_counter() timestamps only (not pre-computed durations): this
+    # function is shared by /decision and /mobile/analyze, each of which
+    # wants elapsed-since-ITS-OWN-request-start numbers, which only the
+    # caller knows. routes/api.py strips this key before responding (see
+    # its existing _stage/_bet/_stack pop) so it never reaches either
+    # public API response — instrumentation-only, no contract change.
+    t_equity_start = time.perf_counter()
     win_rate = simulate_equity(
         hand, board, players, position, num_simulations, stage, texture,
         is_3bet_pot=is_3bet_pot, villain_position=villain_position,
         first_in=(bet == 0),
     )
+    t_equity_end = time.perf_counter()
 
     # On a complete board, the nuts hand wins every possible runout by
     # definition — no simulation approximation needed.
     if hand_class == "nuts" and len(board) == 5:
         win_rate = 1.0
 
+    t_decision_start = time.perf_counter()
     action, ev_call, ev_raise, fold_eq, ev_breakdown = decide_action(
         win_rate=win_rate,
         pot=pot,
@@ -148,6 +158,7 @@ def run_decision_pipeline(
         player_profile=player_profile,
         has_initiative=has_initiative,
     )
+    t_decision_end = time.perf_counter()
 
     is_bluff_catch = ev_breakdown.pop("bluff_catch", False)
     catch_reason   = ev_breakdown.pop("catch_reason", "")
@@ -251,4 +262,12 @@ def run_decision_pipeline(
         "_stage": stage,
         "_bet":   bet,
         "_stack": stack,
+        # Instrumentation-only (latency audit) — raw perf_counter() timestamps,
+        # not durations; see the comment above t_equity_start.
+        "_perf": {
+            "equity_start":   t_equity_start,
+            "equity_end":     t_equity_end,
+            "decision_start": t_decision_start,
+            "decision_end":   t_decision_end,
+        },
     }

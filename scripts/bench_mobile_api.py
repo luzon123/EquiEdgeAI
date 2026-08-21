@@ -90,7 +90,10 @@ def run_benchmark(n: int, vision_latency_ms: float) -> None:
 
     image_bytes = _png_bytes()
     totals: list = []
-    per_stage: dict = {"image_prep_ms": [], "vision_ms": [], "bridge_ms": [], "engine_ms": []}
+    per_stage: dict = {
+        "image_prep_ms": [], "vision_ms": [], "bridge_ms": [], "engine_ms": [],
+        "equity_ms": [], "decision_ms": [],
+    }
 
     mobile_route._DEBUG_TIMING = True
     orig_analyzer = mobile_route._analyzer

@@ -106,6 +106,7 @@ def decision_endpoint():
     result.pop("_stage", None)
     result.pop("_bet", None)
     result.pop("_stack", None)
+    result.pop("_perf", None)  # instrumentation-only (latency audit), never public
 
     return jsonify(result)
 

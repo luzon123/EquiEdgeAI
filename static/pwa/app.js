@@ -26,11 +26,42 @@
   const REQUEST_TIMEOUT_MS = 45_000;
   const MAX_BYTES = 20 * 1024 * 1024; // matches utils/image_utils.py's MAX_IMAGE_BYTES default
 
+  // Client-side pre-upload resize (2026-08-21 latency investigation). Real
+  // production evidence: a 3.0MB 1206x2622 iPhone screenshot took ~6.9s to
+  // reach Flask over the network and another ~4.9s of server-side
+  // decode/resize/encode — both dwarfing Claude's own ~4s and the decision
+  // engine's ~0.1s. Shrinking the upload BEFORE it leaves the phone attacks
+  // the actual measured bottleneck. Mirrors the server's own thresholds so
+  // the two stay consistent and the server's "already within target,
+  // skip re-encode" fast path (utils/image_utils.py) gets hit normally.
+  const CLIENT_MAX_DIMENSION = 2048; // matches utils/image_utils.py's MAX_IMAGE_DIMENSION default
+  const CLIENT_JPEG_QUALITY = 0.92;  // matches utils/image_utils.py's existing JPEG quality=92
+
   const ANALYZING_MESSAGES = ['Reading table…', 'Analyzing hand…', 'Calculating decision…'];
 
   /** @type {'idle'|'analyzing'|'result'|'error'} */
   let state = 'idle';
   let messageTimer = null;
+
+  // Latency-audit instrumentation only (2026-08-20) — does not affect
+  // behavior. performance.now() is high-resolution and monotonic (unlike
+  // Date.now(), which can jump with system clock adjustments), so it's
+  // what every [PERF][WEB] duration below is measured with. perfPrev is
+  // reset at the start of each new analysis attempt (perfReset(), called
+  // from button_clicked) so "elapsed=" always means "since the previous
+  // stage of THIS attempt", not since page load or a prior attempt.
+  let perfPrev = null;
+
+  function perfReset() {
+    perfPrev = null;
+  }
+
+  function perfMark(stage) {
+    const t = performance.now();
+    const elapsed = perfPrev === null ? 0 : t - perfPrev;
+    perfPrev = t;
+    console.log(`[PERF][WEB] ${stage} t=${t.toFixed(2)}ms elapsed=${elapsed.toFixed(2)}ms`);
+  }
 
   const fileInput = document.getElementById('fileInput');
   const analyzeBtn = document.getElementById('analyzeBtn');
@@ -76,6 +107,7 @@
     stopCyclingMessages();
     setState(isError ? 'error' : 'idle');
     render({ busy: false, buttonLabel: 'ANALYZE SCREENSHOT', status, isError, showResult: false });
+    if (perfPrev !== null) perfMark('result_rendered');
   }
 
   function openPicker() {
@@ -84,9 +116,84 @@
       console.warn(`${TAG} tap ignored, already analyzing`);
       return;
     }
+    perfReset();
+    perfMark('button_clicked');
     // Reset so picking the SAME photo twice in a row still fires 'change'.
     fileInput.value = '';
     fileInput.click();
+  }
+
+  /**
+   * Resize+re-encode the selected screenshot to CLIENT_MAX_DIMENSION before
+   * upload, ONLY if it's actually larger than that — otherwise returns the
+   * original file untouched (no quality loss, no wasted CPU for the common
+   * case of an already-reasonably-sized screenshot).
+   *
+   * Every failure path (createImageBitmap unsupported/throws, no 2D canvas
+   * context, toBlob returning null — all realistic on iOS Safari under
+   * memory pressure or for HEIC/unusual inputs createImageBitmap can't
+   * decode) falls back to the ORIGINAL file, unchanged. This is a pure
+   * performance optimization: the backend (utils/image_utils.py)
+   * independently re-validates MIME/dimensions/corruption regardless of
+   * what the client sends, so a fallback to the original file is always
+   * safe, never a correctness or security issue — it just forgoes the
+   * speedup for that one upload.
+   *
+   * JPEG at quality 0.92 (matching utils/image_utils.py's own existing
+   * JPEG quality for its resize path — not a new, unvalidated threshold):
+   * benchmarked against PNG on a same-content-profile proxy (flat UI
+   * regions + sharp card/text edges) at the server's actual target
+   * dimensions, JPEG q92 was ~35% smaller than PNG with no visible
+   * artifacting at this quality level. See the session report for the
+   * real numbers and their caveats (synthetic proxy, not a real ClubGG
+   * screenshot — recommend validating decision accuracy against a real
+   * screenshot before treating this as final).
+   */
+  async function preprocessImage(file) {
+    if (typeof createImageBitmap !== 'function') {
+      console.warn(`${TAG} createImageBitmap unavailable, using original file`);
+      return { blob: file, width: null, height: null, skipped: true };
+    }
+
+    let bitmap = null;
+    try {
+      bitmap = await createImageBitmap(file);
+      const { width, height } = bitmap;
+      console.log(`[PERF][WEB] original_width=${width}`);
+      console.log(`[PERF][WEB] original_height=${height}`);
+
+      if (width <= CLIENT_MAX_DIMENSION && height <= CLIENT_MAX_DIMENSION) {
+        return { blob: file, width, height, skipped: true };
+      }
+
+      const scale = Math.min(CLIENT_MAX_DIMENSION / width, CLIENT_MAX_DIMENSION / height);
+      const targetW = Math.max(1, Math.round(width * scale));
+      const targetH = Math.max(1, Math.round(height * scale));
+
+      // Plain <canvas>, not OffscreenCanvas — broader/more reliable iOS
+      // Safari support across the versions this PWA needs to run on.
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('2D canvas context unavailable');
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob returned null'))),
+          'image/jpeg',
+          CLIENT_JPEG_QUALITY
+        );
+      });
+
+      return { blob, width: targetW, height: targetH, skipped: false };
+    } catch (err) {
+      console.warn(`${TAG} client-side preprocessing failed, using original file: ${err && err.message}`);
+      return { blob: file, width: null, height: null, skipped: true };
+    } finally {
+      if (bitmap) bitmap.close();
+    }
   }
 
   async function onFileSelected(event) {
@@ -96,6 +203,9 @@
     console.log(`${TAG} file_selected`);
     console.log(`${TAG} file_name=${file.name}`);
     console.log(`${TAG} file_size=${file.size}`);
+    console.log(`[PERF][WEB] file_selected`);
+    console.log(`[PERF][WEB] original_bytes=${file.size}`);
+    perfMark('file_selected');
 
     if (!file.type.startsWith('image/')) {
       resetToIdle("That doesn't look like an image. Try again.", true);
@@ -122,14 +232,29 @@
     render({ busy: true, buttonLabel: 'ANALYZING…', status: '', isError: false, showResult: false });
     cycleAnalyzingMessages();
 
+    const totalStart = performance.now();
+    const preprocessStart = performance.now();
+    const { blob: uploadBlob, width, height, skipped } = await preprocessImage(file);
+    const preprocessMs = performance.now() - preprocessStart;
+
+    console.log(`[PERF][WEB] preprocess_ms=${preprocessMs.toFixed(2)} skipped=${skipped}`);
+    console.log(`[PERF][WEB] final_bytes=${uploadBlob.size}`);
+    if (width != null) console.log(`[PERF][WEB] final_width=${width}`);
+    if (height != null) console.log(`[PERF][WEB] final_height=${height}`);
+
+    // JPEG when preprocessing actually ran (canvas output), otherwise the
+    // original file's own name/type pass through unchanged.
+    const uploadName = skipped ? (file.name || 'screenshot.png') : 'screenshot.jpg';
+
     const form = new FormData();
     // Field name "image" — must match request.files["image"] in routes/mobile.py.
-    form.append('image', file, file.name || 'screenshot.png');
+    form.append('image', uploadBlob, uploadName);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     console.log(`${TAG} upload_started`);
+    perfMark('upload_started');
     let response;
     try {
       response = await fetch(ENDPOINT, { method: 'POST', body: form, signal: controller.signal });
@@ -153,10 +278,16 @@
     console.log(`${TAG} upload_completed`);
     console.log(`${TAG} response_received`);
     console.log(`${TAG} response_status=${response.status}`);
+    console.log(`[PERF][WEB] upload_completed`);
+    console.log(`[PERF][WEB] total_ms=${(performance.now() - totalStart).toFixed(2)}`);
+    perfMark('upload_completed'); // fetch() resolving covers both upload + response headers, see comment above
+    perfMark('response_received');
 
     let body;
     try {
+      perfMark('json_parse_started');
       body = await response.json();
+      perfMark('json_parse_done');
     } catch (err) {
       console.error(`${TAG}[ERROR] stage=parse_response response was not valid JSON: ${err && err.message}`);
       resetToIdle('Analysis failed. Try again.', true);
@@ -190,6 +321,7 @@
     resultCard.classList.add('visible');
     setState('result');
     render({ busy: false, buttonLabel: 'ANALYZE ANOTHER', status: 'Ready', isError: false, showResult: true });
+    perfMark('result_rendered');
   }
 
   analyzeBtn.addEventListener('click', openPicker);
