@@ -109,26 +109,24 @@ def validate_and_process_image(
         ) from exc
 
     rid = current_request_id()
-    t_decode_start = time.perf_counter()
+    t_total_start = time.perf_counter()
+
+    # -- open: header/metadata parse only, no pixel decode --------------------
+    # Image.open() reads just enough of the file to identify format and
+    # dimensions (e.g. the JPEG SOF marker, the PNG IHDR chunk) — it does
+    # NOT decompress pixel data. Confirmed both from Pillow's own source
+    # and empirically (2026-08-21 investigation): this stage costs well
+    # under 1ms regardless of file size.
+    t0 = time.perf_counter()
     try:
         img = Image.open(io.BytesIO(file_bytes))
-        img.verify()                # raises if file is corrupted/truncated
     except Exception as exc:
         raise ValueError(f"Image file is corrupted or unreadable: {exc}") from exc
+    t_open_ms = (time.perf_counter() - t0) * 1000
+    logger.info("[PERF][IMAGE] open request_id=%s ms=%.2f", rid, t_open_ms)
 
-    # Re-open after verify() (verify() closes the file handle)
-    try:
-        img = Image.open(io.BytesIO(file_bytes))
-        img.load()                  # fully decode into memory
-    except Exception as exc:
-        raise ValueError(f"Image could not be decoded: {exc}") from exc
-    t_decode_end = time.perf_counter()
-    logger.info(
-        "[PERF][IMAGE] decode request_id=%s ms=%.2f",
-        rid, (t_decode_end - t_decode_start) * 1000,
-    )
-
-    # -- MIME type from actual image content ---------------------------------
+    # -- metadata: format + dimensions, still no pixel decode -----------------
+    t0 = time.perf_counter()
     fmt = (img.format or "").upper()
     mime_map = {"PNG": "image/png", "JPEG": "image/jpeg", "JPG": "image/jpeg"}
     mime_type = mime_map.get(fmt)
@@ -137,9 +135,61 @@ def validate_and_process_image(
             f"Unsupported image format '{fmt}'. "
             f"Only PNG and JPEG are accepted."
         )
-
     original_w, original_h = img.size
     was_resized = False
+    t_metadata_ms = (time.perf_counter() - t0) * 1000
+    logger.info(
+        "[PERF][IMAGE] metadata request_id=%s ms=%.2f format=%s w=%d h=%d",
+        rid, t_metadata_ms, fmt, original_w, original_h,
+    )
+
+    # -- verify + decode --------------------------------------------------------
+    # Format-branched. Investigated directly (both from Pillow 10.1's source
+    # and empirical timing) rather than assumed:
+    #   - JpegImageFile does NOT override ImageFile.verify() — for JPEG,
+    #     verify() only closes the file handle; it performs zero
+    #     format-specific validation and cannot catch a truncated/corrupt
+    #     JPEG body (measured at 0.00ms). The ONLY thing that actually
+    #     proves a JPEG's compressed data is intact is decoding it, i.e.
+    #     load() — which we need anyway. So for JPEG, the separate
+    #     verify() + its accompanying redundant second Image.open() are
+    #     dropped: one open() + one load() catches everything the old
+    #     open+verify+open+load sequence did, with identical protection
+    #     (load() raises on truncated/corrupt data exactly like verify()
+    #     would have attempted to, and unlike verify(), actually checks).
+    #   - PngImageFile DOES override verify() with real chunk-CRC checking
+    #     (self.png.verify(), which walks remaining chunks validating
+    #     CRC32) — genuinely distinct from load(), so PNG's existing
+    #     open+verify+open+load sequence is preserved unchanged.
+    # Neither branch touches Pillow's own decompression-bomb guard
+    # (Image.MAX_IMAGE_PIXELS, checked automatically inside open()/load())
+    # — it stays active exactly as before, on both branches.
+    if fmt == "JPEG":
+        t0 = time.perf_counter()
+        try:
+            img.load()
+        except Exception as exc:
+            raise ValueError(f"Image could not be decoded: {exc}") from exc
+        t_decode_ms = (time.perf_counter() - t0) * 1000
+        logger.info("[PERF][IMAGE] decode request_id=%s ms=%.2f", rid, t_decode_ms)
+    else:
+        t0 = time.perf_counter()
+        try:
+            img.verify()            # raises if file is corrupted/truncated
+        except Exception as exc:
+            raise ValueError(f"Image file is corrupted or unreadable: {exc}") from exc
+        t_verify_ms = (time.perf_counter() - t0) * 1000
+        logger.info("[PERF][IMAGE] verify request_id=%s ms=%.2f", rid, t_verify_ms)
+
+        # Re-open after verify() (verify() closes the file handle)
+        t0 = time.perf_counter()
+        try:
+            img = Image.open(io.BytesIO(file_bytes))
+            img.load()               # fully decode into memory
+        except Exception as exc:
+            raise ValueError(f"Image could not be decoded: {exc}") from exc
+        t_decode_ms = (time.perf_counter() - t0) * 1000
+        logger.info("[PERF][IMAGE] decode request_id=%s ms=%.2f", rid, t_decode_ms)
 
     # -- Resize if needed -----------------------------------------------------
     t_resize_start = time.perf_counter()
@@ -171,6 +221,10 @@ def validate_and_process_image(
     # screenshot that's already within max_dimension.
     if not was_resized:
         logger.info("[PERF][IMAGE] encode request_id=%s ms=0.00 skipped=already_within_target", rid)
+        logger.info(
+            "[PERF][IMAGE] total request_id=%s ms=%.2f",
+            rid, (time.perf_counter() - t_total_start) * 1000,
+        )
         return ProcessedImage(
             data        = file_bytes,
             mime_type   = mime_type,
@@ -201,6 +255,10 @@ def validate_and_process_image(
         "Image processed | original=%d bytes → processed=%d bytes | "
         "size=%dx%d | mime=%s | resized=%s",
         size, len(processed_bytes), img.size[0], img.size[1], mime_type, was_resized,
+    )
+    logger.info(
+        "[PERF][IMAGE] total request_id=%s ms=%.2f",
+        rid, (time.perf_counter() - t_total_start) * 1000,
     )
 
     return ProcessedImage(
